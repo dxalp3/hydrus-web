@@ -39,11 +39,14 @@ run_gradle() {
   set -e
 
   if [[ "$status" -ne 0 && "${GITHUB_ACTIONS:-}" == "true" ]]; then
+    local encoded_log
     while IFS= read -r line; do
       line="${line//'%'/'%25'}"
       line="${line//$'\r'/'%0D'}"
       echo "::error title=Android Gradle build::$line"
     done < <(tail -n 30 "$gradle_log")
+    encoded_log="$(tail -c 24000 "$gradle_log" | base64 | tr -d '\n')"
+    echo "::error title=Android Gradle log (base64)::$encoded_log"
   fi
 
   return "$status"
