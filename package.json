@@ -17,7 +17,7 @@
     "android:open": "npm run android:sync && cap open android",
     "android:apk": "bash scripts/build-android-apk.sh",
     "desktop:start": "npm run build && electron .",
-    "desktop:build": "npm run build && electron-builder --win portable --x64 --publish never",
+    "desktop:build": "npm run build && electron-builder --win --x64 --publish never",
     "build": "ng build",
     "test": "ng test",
     "lint": "ng lint",
@@ -31,7 +31,6 @@
   "build": {
     "appId": "io.github.hydrusweb.desktop",
     "productName": "Hydrus Web",
-    "artifactName": "Hydrus-Web-Windows-${version}.${ext}",
     "directories": {
       "output": "release/desktop"
     },
@@ -47,9 +46,28 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "src/assets/maskable-512x512.png"
+    },
+    "portable": {
+      "artifactName": "Hydrus-Web-Windows-Portable-${version}.${ext}"
+    },
+    "nsis": {
+      "artifactName": "Hydrus-Web-Windows-Setup-${version}.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Hydrus Web",
+      "uninstallDisplayName": "Hydrus Web"
     }
   },
   "dependencies": {

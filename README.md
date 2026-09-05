@@ -41,7 +41,8 @@ Pushing a version tag builds all three applications and publishes them together 
 
 - `Hydrus-Web-unsigned.ipa` — iPhone/iPad application for SideStore to re-sign.
 - `Hydrus-Web-Android.apk` — directly installable Android application.
-- `Hydrus-Web-Windows-<version>.exe` — portable Windows application that needs no installer.
+- `Hydrus-Web-Windows-Setup-<version>.exe` — guided per-user Windows installer with Start menu, desktop shortcut, install-folder selection, and uninstaller.
+- `Hydrus-Web-Windows-Portable-<version>.exe` — portable Windows application that needs no installer.
 
 Create a release from the current commit with:
 
@@ -59,9 +60,9 @@ The Android workflow creates an installable debug-signed APK when no signing sec
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-The Windows executable is currently unsigned, so Windows may show a SmartScreen warning on first launch.
+The Windows installer and portable executable are currently unsigned, so Windows may show a SmartScreen warning on first launch.
 
-For Android development, `npm run android:open` rebuilds and opens the project in Android Studio. On macOS or Linux, `npm run android:apk` writes the APK to `release/android/Hydrus-Web-Android.apk`. For desktop development, use `npm run desktop:start`; `npm run desktop:build` creates the portable Windows executable.
+For Android development, `npm run android:open` rebuilds and opens the project in Android Studio. On macOS or Linux, `npm run android:apk` writes the APK to `release/android/Hydrus-Web-Android.apk`. For desktop development, use `npm run desktop:start`; `npm run desktop:build` creates both the Windows installer and portable executable.
 
 ### iPad, phones, and other devices on your network
 
