@@ -35,6 +35,34 @@ npm run ios:ipa
 
 The output is written to `ios/App/output/Hydrus-Web-unsigned.ipa`. For normal native development, `npm run ios:open` rebuilds the Angular app, syncs it into the iOS project, and opens Xcode.
 
+### GitHub Releases: iPad, Android, and Windows
+
+Pushing a version tag builds all three applications and publishes them together on the repository's **Releases** page:
+
+- `Hydrus-Web-unsigned.ipa` — iPhone/iPad application for SideStore to re-sign.
+- `Hydrus-Web-Android.apk` — directly installable Android application.
+- `Hydrus-Web-Windows-<version>.exe` — portable Windows application that needs no installer.
+
+Create a release from the current commit with:
+
+```powershell
+git tag v1.3.0
+git push origin v1.3.0
+```
+
+The **Publish application release** workflow builds the three targets and creates the GitHub Release automatically. Both mobile applications bundle the web UI and connect directly to the Hydrus Client API address configured in the app. Plain HTTP is allowed by the Android wrapper for Hydrus servers reached inside a trusted Tailscale network; HTTPS should still be used when available.
+
+The Android workflow creates an installable debug-signed APK when no signing secrets are configured. That is suitable for sideloading, but a later build may require uninstalling the old APK before installation. For stable in-place Android updates, configure these repository Actions secrets with a permanent Android keystore:
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+The Windows executable is currently unsigned, so Windows may show a SmartScreen warning on first launch.
+
+For Android development, `npm run android:open` rebuilds and opens the project in Android Studio. On macOS or Linux, `npm run android:apk` writes the APK to `release/android/Hydrus-Web-Android.apk`. For desktop development, use `npm run desktop:start`; `npm run desktop:build` creates the portable Windows executable.
+
 ### iPad, phones, and other devices on your network
 
 Hydrus Web is an installable Progressive Web App (PWA), so the same build works on iPadOS, iOS, Android, Windows, macOS, and Linux. A small production server is included for running this customized copy from any computer that can reach Hydrus. Running it on the Hydrus computer is the simplest setup.

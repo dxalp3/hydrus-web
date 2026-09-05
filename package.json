@@ -1,6 +1,9 @@
 {
   "name": "hydrus-web",
   "version": "1.3.0",
+  "description": "A web, mobile, and desktop interface for the Hydrus Client API.",
+  "author": "Hydrus Web contributors",
+  "main": "electron/main.cjs",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -10,6 +13,11 @@
     "ios:sync": "npm run build && cap sync ios",
     "ios:open": "npm run ios:sync && cap open ios",
     "ios:ipa": "bash scripts/build-unsigned-ipa.sh",
+    "android:sync": "npm run build && cap sync android",
+    "android:open": "npm run android:sync && cap open android",
+    "android:apk": "bash scripts/build-android-apk.sh",
+    "desktop:start": "npm run build && electron .",
+    "desktop:build": "npm run build && electron-builder --win portable --x64 --publish never",
     "build": "ng build",
     "test": "ng test",
     "lint": "ng lint",
@@ -20,6 +28,30 @@
   },
   "license": "MIT",
   "private": true,
+  "build": {
+    "appId": "io.github.hydrusweb.desktop",
+    "productName": "Hydrus Web",
+    "artifactName": "Hydrus-Web-Windows-${version}.${ext}",
+    "directories": {
+      "output": "release/desktop"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/hydrus-web/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "src/assets/maskable-512x512.png"
+    }
+  },
   "dependencies": {
     "@angular/animations": "^18.0.1",
     "@angular/cdk": "^18.0.0",
@@ -32,6 +64,7 @@
     "@angular/platform-browser-dynamic": "^18.0.1",
     "@angular/router": "^18.0.1",
     "@angular/service-worker": "^18.0.1",
+    "@capacitor/android": "8.5.1",
     "@capacitor/core": "8.5.1",
     "@capacitor/ios": "8.5.1",
     "@floogulinc/construct-style-sheets-polyfill": "^3.2.0",
@@ -82,6 +115,8 @@
     "@types/node": "^12.19.7",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
+    "electron": "44.2.0",
+    "electron-builder": "26.15.3",
     "eslint": "^8.57.0",
     "git-rev-sync": "^3.0.2",
     "jasmine-core": "~4.4.0",
