@@ -10,7 +10,7 @@ ipa_path="$output_directory/Hydrus-Web-unsigned.ipa"
 
 cd "$project_root"
 
-npm ci
+npm install --no-audit --no-fund
 npm run ios:sync
 
 app_version="$(node -p "require('./package.json').version")"

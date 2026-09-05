@@ -16,7 +16,7 @@ trap cleanup EXIT
 
 cd "$project_root"
 
-npm ci
+npm install --no-audit --no-fund
 npm run android:sync
 
 export HYDRUS_APP_VERSION
