@@ -13,8 +13,8 @@ android {
         applicationId "io.github.hydrusweb.client"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode (System.getenv('HYDRUS_ANDROID_VERSION_CODE') ?: '10300').toInteger()
-        versionName System.getenv('HYDRUS_APP_VERSION') ?: '1.3.0'
+        versionCode = (System.getenv('HYDRUS_ANDROID_VERSION_CODE') ?: '10300').toInteger()
+        versionName = System.getenv('HYDRUS_APP_VERSION') ?: '1.3.0'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
