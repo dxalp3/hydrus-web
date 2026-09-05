@@ -7,8 +7,12 @@ interface TagInputDialogData {
   enableOrSearch: boolean;
   enableSystemPredicates: boolean;
   enableFavorites: boolean;
+  multiSelectAutocomplete: boolean;
+  enableSelectionGroups: boolean;
   title: string;
   submitButtonText: string;
+  singleTagEdit?: string;
+  initialTags?: HydrusSearchTags;
 }
 
 const defaultData: TagInputDialogData = {
@@ -16,6 +20,8 @@ const defaultData: TagInputDialogData = {
   enableOrSearch: true,
   enableSystemPredicates: true,
   enableFavorites: true,
+  multiSelectAutocomplete: false,
+  enableSelectionGroups: false,
   title: 'Tags',
   submitButtonText: 'OK'
 }
@@ -28,6 +34,7 @@ const defaultData: TagInputDialogData = {
 export class TagInputDialogComponent implements OnInit {
 
   tags: HydrusSearchTags = [];
+  singleTag = '';
 
   constructor(
     public dialogRef: MatDialogRef<TagInputDialogComponent>,
@@ -36,6 +43,8 @@ export class TagInputDialogComponent implements OnInit {
     if(!data) {
       this.data = defaultData;
     }
+    this.singleTag = this.data.singleTagEdit ?? '';
+    this.tags = this.data.initialTags ? [...this.data.initialTags] : [];
   }
 
   ngOnInit(): void {
@@ -53,6 +62,13 @@ export class TagInputDialogComponent implements OnInit {
         ...config
       }
     );
+  }
+
+  submitSingleTag() {
+    const tag = this.singleTag.trim();
+    if(tag) {
+      this.dialogRef.close([tag]);
+    }
   }
 
 }

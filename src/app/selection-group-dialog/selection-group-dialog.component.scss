@@ -1,0 +1,21 @@
+mat-form-field {
+  width: 100%;
+}
+
+.color-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0 12px;
+}
+
+input[type='color'] {
+  width: 52px;
+  height: 36px;
+  padding: 2px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}

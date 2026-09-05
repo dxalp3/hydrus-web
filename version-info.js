@@ -1,6 +1,6 @@
 const { version } = require('./package.json');
 const { resolve, relative } = require('path');
-const { writeFileSync } = require('fs-extra');
+const { writeFileSync } = require('fs');
 
 var info;
 

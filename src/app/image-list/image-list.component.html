@@ -1,4 +1,4 @@
-<virtual-scroller class="virtual-scroll" #scroll [items]="files()" (vsEnd)="vsEnd($event)"
+<virtual-scroller class="virtual-scroll" [class.selection-mode]="selectionActive()" #scroll [items]="files()" (vsEnd)="vsEnd($event)"
   [parentScroll]="scrollElement" [bufferAmount]="24">
   <ul class="mdc-image-list browse-image-list" #container>
     @for (file of scroll.viewPortItems; track file.file_id) {
@@ -6,11 +6,20 @@
         <a
           class="image-list-link"
           [href]="file.file_url"
+          [draggable]="false"
+          (pointerdown)="selectionPointerDown($event, file)"
+          (pointerenter)="selectionPointerEnter($event, file)"
           (click)="fileClick($event, file)"
+          (dblclick)="fileDoubleClick($event, file)"
           [appMatContextMenuTriggerFor]="fileMenu"
           [matMenuTriggerData]="{file}"
         >
-          <app-image-list-item [file]="file" [selected]="selected().has(file.file_id)"></app-image-list-item>
+          <app-image-list-item
+            [file]="file"
+            [selected]="selected().has(file.file_id)"
+            [selectionColor]="activeSelectionColor()"
+            [selectionMemberships]="fileGroupMemberships(file.file_id)"
+          ></app-image-list-item>
         </a>
       </li>
     }
@@ -39,6 +48,10 @@
     <button mat-menu-item (click)="fileInfo(file)">
       <mat-icon>info_outlined</mat-icon>
       <span>File Info</span>
+    </button>
+    <button mat-menu-item (click)="fileInfo(file, true)">
+      <mat-icon>sell</mat-icon>
+      <span>Manage Tags</span>
     </button>
     <mat-divider></mat-divider>
     <app-file-context-menu-actions [file]="file"></app-file-context-menu-actions>

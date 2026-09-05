@@ -2,9 +2,35 @@
   margin-bottom: 16px;
 }
 .search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
 }
 
 .tag-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+}
+
+.search-button {
+  flex: 0 0 auto;
+}
+
+.search-history-entry {
+  display: flex;
+  flex-direction: column;
+  max-width: 360px;
+  line-height: 20px;
+}
+
+.search-history-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-history-time {
+  font-size: 12px;
+  opacity: 0.7;
 }

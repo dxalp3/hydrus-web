@@ -38,3 +38,21 @@ export interface HydrusPage extends HydrusPageSimple {
   };
 }
 
+export interface HydrusNewPageRequest {
+  page_type: HydrusPageType;
+  page_name?: string;
+  page_of_pages_key?: string;
+  focus_page?: boolean;
+  tags?: string[];
+  paths?: string[];
+  delete_after_success?: boolean;
+  urls?: string[];
+  url?: string;
+}
+
+export interface HydrusNewPageResponse {
+  page_key: string;
+  page_type: HydrusPageType;
+  page_name: string;
+}
+

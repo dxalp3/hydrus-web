@@ -1,18 +1,16 @@
 import { Component, OnInit, AfterViewInit, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
-import { SearchService } from '../search.service';
-import { HydrusFilesService } from '../hydrus-files.service';
-import { BehaviorSubject, catchError, combineLatest, filter, firstValueFrom, map, Observable, of, shareReplay, Subject, switchMap, tap } from 'rxjs';
+import { combineLatest, firstValueFrom, map } from 'rxjs';
 import { UntilDestroy } from '@ngneat/until-destroy';
-import { SettingsService } from '../settings.service';
-import { HydrusSearchTags } from '../hydrus-tags';
 import { defaultSort, displaySortGroups, HydrusSortType, isDisplaySortMetaTypeGroup, isDisplaySortType, SortInfo, sortToString } from '../hydrus-sort';
 import { FormControl } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ErrorService } from '../error.service';
-import { ALL_KNOWN_TAGS_SERVICE_KEY, ALL_MY_FILES_SERVICE_KEY, getTagServices, isFileService, isNonDeletedFileService } from '../hydrus-services';
+import { getTagServices, isNonDeletedFileService } from '../hydrus-services';
 import { ServiceSelectDialogComponent } from '../service-select-dialog/service-select-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
 import { HydrusServicesService } from '../hydrus-services.service';
+import { BrowseSearchHistoryEntry, BrowseStateService } from './browse-state.service';
+import { HydrusSearchTag } from '../hydrus-tags';
+import { parseSelectionGroupSearchTag, SelectionGroupsService } from '../selection-groups.service';
 
 @UntilDestroy()
 @Component({
@@ -24,30 +22,21 @@ import { HydrusServicesService } from '../hydrus-services.service';
 export class BrowseComponent implements OnInit, AfterViewInit, OnDestroy {
 
   constructor(
-    private searchService: SearchService,
-    public filesService: HydrusFilesService,
-    public settingsService: SettingsService,
     private route: ActivatedRoute,
     private router: Router,
-    private errorService: ErrorService,
     private dialog: MatDialog,
-    private hydrusServices: HydrusServicesService
+    private hydrusServices: HydrusServicesService,
+    private browseState: BrowseStateService,
+    private selectionGroups: SelectionGroupsService
     ) {
   }
 
-  tagsFormControl = new FormControl<HydrusSearchTags>([]);
+  tagsFormControl = new FormControl(this.browseState.tags$.value, {nonNullable: true});
 
-  searchTags$ = this.tagsFormControl.valueChanges.pipe(
-    shareReplay(1)
-  );
-
-  sort$ = new BehaviorSubject(defaultSort);
-  searching$ = new BehaviorSubject(this.settingsService.appSettings.browseSearchOnLoad);
-
-  refresh$ = new Subject();
-
-  tagServiceKey$ = new BehaviorSubject(ALL_KNOWN_TAGS_SERVICE_KEY);
-  fileServiceKey$ = new BehaviorSubject(ALL_MY_FILES_SERVICE_KEY);
+  sort$ = this.browseState.sort$;
+  searching$ = this.browseState.searching$;
+  tagServiceKey$ = this.browseState.tagServiceKey$;
+  fileServiceKey$ = this.browseState.fileServiceKey$;
 
   tagService$ = combineLatest([this.tagServiceKey$, this.hydrusServices.hydrusServicesArray$]).pipe(
     map(([serviceKey, services]) => services.find(s => s.service_key === serviceKey))
@@ -63,69 +52,74 @@ export class BrowseComponent implements OnInit, AfterViewInit, OnDestroy {
   sortToString = sortToString;
   defaultSort = defaultSort;
 
-  currentSearch$: Observable<number[]> = combineLatest([this.searchTags$, this.sort$, this.tagServiceKey$, this.fileServiceKey$, this.refresh$]).pipe(
-    filter(([searchTags]) => this.settingsService.appSettings.browseSearchWhenEmpty || searchTags.length > 0),
-    tap(() => this.searching$.next(true)),
-    switchMap(([searchTags, sort, tagService, fileService]) => this.searchService.searchFiles(
-      searchTags,
-      {
-        file_sort_type: sort.sortType,
-        file_sort_asc: sort.sortAsc,
-        tag_service_key: tagService,
-        file_service_key: fileService
-      }
-    ).pipe(
-      catchError(error => {
-        this.errorService.handleHydrusError(error, 'Error searching');
-        return of([]);
-      }),
-    )),
-    tap(() => this.searching$.next(false)),
-    shareReplay(1),
-  )
-
-  searchTotal$ = this.currentSearch$.pipe(
-    map(s => s.length)
-  )
-
-  firstParams = true;
+  currentSearch$ = this.browseState.currentSearch$;
+  searchTotal$ = this.browseState.searchTotal$;
+  searchHistory$ = this.browseState.searchHistory$;
 
   ngOnInit() {
     this.route.queryParamMap.subscribe(params => {
       if (params.has('tags')) {
         this.tagsFormControl.setValue(JSON.parse(params.get('tags')))
-        this.router.navigate(['/browse'], { replaceUrl: true });
+        this.refresh();
+        this.router.navigate(['/'], { replaceUrl: true });
       } else if (params.has('addTags')) {
         this.tagsFormControl.setValue([...this.tagsFormControl.value, ...JSON.parse(params.get('addTags'))])
-        this.router.navigate(['/browse'], { replaceUrl: true });
-      } else if (this.firstParams) {
-        this.tagsFormControl.setValue(this.settingsService.appSettings.browseDefaultSearchTags);
+        this.refresh();
+        this.router.navigate(['/'], { replaceUrl: true });
       }
-      this.firstParams = false;
     });
   }
 
 
   ngAfterViewInit() {
-    if (this.settingsService.appSettings.browseSearchOnLoad) {
-      this.refresh$.next(null);
-    }
+    this.browseState.ensureInitialSearch();
   }
 
-  tagsSub = this.searchTags$.subscribe();
+  tagsSub = this.tagsFormControl.valueChanges.subscribe(tags => this.browseState.tags$.next(tags));
 
   ngOnDestroy() {
     this.tagsSub.unsubscribe();
   }
 
-/*   tagsChanged(tags: HydrusSearchTags) {
-    console.log(tags);
-    this.searchTags$.next(tags);
-  } */
-
   setSortInfo(sort: SortInfo) {
     this.sort$.next(sort);
+    this.browseState.refreshIfStarted();
   }
+
+  refresh() {
+    this.browseState.refresh();
+  }
+
+  restoreSearch(entry: BrowseSearchHistoryEntry) {
+    this.browseState.restoreSearch(entry);
+    this.tagsFormControl.setValue(this.browseState.tags$.value, {emitEvent: false});
+  }
+
+  clearSearchHistory() {
+    this.browseState.clearSearchHistory();
+  }
+
+  searchHistoryLabel(entry: BrowseSearchHistoryEntry) {
+    const tags = entry.tags.length > 0
+      ? entry.tags.map(tag => this.searchTagLabel(tag)).join(' AND ')
+      : 'All files';
+    return `${tags} · ${sortToString(entry.sort)}`;
+  }
+
+  private searchTagLabel(tag: HydrusSearchTag): string {
+    if(typeof tag !== 'string') {
+      return `(${tag.map(nestedTag => this.searchTagLabel(nestedTag)).join(' OR ')})`;
+    }
+    const selectionGroupPredicate = parseSelectionGroupSearchTag(tag);
+    if(!selectionGroupPredicate) {
+      return tag;
+    }
+    const groupName = this.selectionGroups.groups()
+      .find(group => group.id === selectionGroupPredicate.groupID)?.name
+      ?? 'Deleted selection group';
+    return `${selectionGroupPredicate.excluded ? 'NOT ' : ''}Selection group: ${groupName}`;
+  }
+
   setSort(sortType: HydrusSortType, sortAsc: boolean) {
     this.setSortInfo({sortType, sortAsc});
   }
@@ -140,6 +134,7 @@ export class BrowseComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     this.tagServiceKey$.next(service.service_key);
+    this.browseState.refreshIfStarted();
   }
 
   async fileServiceDialog() {
@@ -149,29 +144,7 @@ export class BrowseComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     this.fileServiceKey$.next(service.service_key);
+    this.browseState.refreshIfStarted();
   }
-
-/*   search() {
-    if(!this.settingsService.appSettings.browseSearchWhenEmpty && this.searchTags.length === 0) {
-      return;
-    }
-    this.searching = true;
-    this.searchSub?.unsubscribe();
-    this.searchSub = this.searchService.searchFiles(
-      this.searchTags,
-      {
-        file_sort_type: this.sort.sortType,
-        file_sort_asc: this.sort.sortAsc
-      }
-    ).pipe(untilDestroyed(this)).subscribe((result) => {
-      this.searching = false;
-      this.currentSearchIDs = result;
-    }, (error) => {
-      this.searching = false;
-      this.snackbar.open(`Error searching: ${error.message}`, undefined, {
-        duration: 5000
-      });
-    });
-  } */
 
 }

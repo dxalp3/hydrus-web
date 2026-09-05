@@ -3,6 +3,7 @@ import { HydrusBasicFile } from '../hydrus-file';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { FileInfoSheetComponent } from '../file-info-sheet/file-info-sheet.component';
 import { HydrusFileDownloadService } from '../hydrus-file-download.service';
+import type { SelectionGroup } from '../selection-groups.service';
 
 @Component({
   selector: 'app-image-list-item',
@@ -22,6 +23,10 @@ export class ImageListItemComponent {
   file = input.required<HydrusBasicFile>()
 
   selected = input(false)
+
+  selectionColor = input('#3f51b5')
+
+  selectionMemberships = input<SelectionGroup[]>([])
 
 
 }

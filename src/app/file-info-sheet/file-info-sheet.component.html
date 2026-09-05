@@ -222,7 +222,11 @@
                       class="theming tag-chip tag-color"
                       [attr.data-tag-namespace]="tag | tagNamespace"
                       [matMenuTriggerFor]="tagMenu"
+                      #tagMenuTrigger="matMenuTrigger"
                       [matMenuTriggerData]="{tag, service: {serviceType: service.serviceType, serviceKey: service.serviceKey}}"
+                      [class.editable-tag]="fileInfoSheetService.showStorageTags && service.serviceType === LocalTagService"
+                      [attr.title]="fileInfoSheetService.showStorageTags && service.serviceType === LocalTagService ? 'Double-click to edit tag' : null"
+                      (dblclick)="tagMenuTrigger.closeMenu(); editTag($event, tag, service)"
                       >
                       <div class="tag-chip-text">{{tag}}</div>
                     </mat-chip-option>

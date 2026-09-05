@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, ChangeDetectionStrategy, ChangeDetectorRef, OnChanges, input, signal, effect, computed } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, OnChanges, input, signal, computed } from '@angular/core';
 import { HydrusFilesService } from '../hydrus-files.service';
 import { HydrusBasicFile } from '../hydrus-file';
 import { IPageInfo } from '@iharbeck/ngx-virtual-scroller';
@@ -13,6 +13,10 @@ import { TagInputDialogComponent } from '../tag-input-dialog/tag-input-dialog.co
 import { HydrusTagsService } from '../hydrus-tags.service';
 import { union } from 'set-utilities';
 import { HydrusVersionService } from '../hydrus-version.service';
+import { HydrusFileDownloadService } from '../hydrus-file-download.service';
+import { MatMenuTrigger } from '@angular/material/menu';
+import { SelectionGroup, SelectionGroupsService } from '../selection-groups.service';
+import { SelectionGroupDialogComponent } from '../selection-group-dialog/selection-group-dialog.component';
 
 @Component({
   selector: 'app-image-list-loader',
@@ -38,11 +42,22 @@ export class ImageListLoaderComponent implements OnInit, OnChanges {
 
   currentFiles = signal<HydrusBasicFile[]>([]);
 
-  selected = signal<Set<number>>(new Set());
+  selected = computed(() => this.selectionGroups.activeFileIDs());
+
+  activeSelectionGroupName = computed(() => {
+    const groups = this.selectionGroups.activeGroups();
+    return groups.length === 1 ? groups[0].name : `${groups.length} active groups`;
+  });
+
+  selectionMode = signal(false);
+
+  selectionShelfCollapsed = signal(false);
 
   numSelected = computed(() => this.selected().size)
 
   anySelected = computed(() => this.numSelected() > 0)
+
+  selectionActive = computed(() => this.selectionMode() || this.anySelected())
 
   constructor(
     public filesService: HydrusFilesService,
@@ -50,7 +65,9 @@ export class ImageListLoaderComponent implements OnInit, OnChanges {
     private dialog: MatDialog,
     private errorService: ErrorService,
     private tagsService: HydrusTagsService,
-    private versionService: HydrusVersionService
+    private versionService: HydrusVersionService,
+    private downloadService: HydrusFileDownloadService,
+    public selectionGroups: SelectionGroupsService
   ) {
 
   }
@@ -81,15 +98,99 @@ export class ImageListLoaderComponent implements OnInit, OnChanges {
   }
 
   deselectAll() {
-    this.selected.set(new Set())
+    this.selectionGroups.setActiveFiles(new Set())
+    this.selectionMode.set(false)
   }
 
   selectAll() {
-    this.selected.set(new Set(this.fileIDs()))
+    this.selectionMode.set(true)
+    this.selectionGroups.setActiveFiles(new Set(this.fileIDs()))
+  }
+
+  selectionButtonClick(event: MouseEvent, menuTrigger: MatMenuTrigger) {
+    event.stopPropagation();
+    if(this.selectionActive()) {
+      this.openSelectionMenu(menuTrigger);
+    } else {
+      this.selectionMode.set(true);
+    }
+  }
+
+  openSelectionMenu(menuTrigger: MatMenuTrigger) {
+    this.selectionMode.set(true);
+    menuTrigger.openMenu();
   }
 
   select(ids: number[]) {
-    this.selected.update(s => union(s, new Set(ids)))
+    this.selectionMode.set(true)
+    this.selectionGroups.setActiveFiles(union(this.selected(), new Set(ids)))
+  }
+
+  selectionChanged(selected: Set<number>) {
+    this.selectionGroups.setActiveFiles(selected);
+    if(selected.size > 0) {
+      this.selectionMode.set(true);
+    }
+  }
+
+  activateSelectionGroup(groupID: string) {
+    if(this.selectionGroups.setActiveGroup(groupID)) {
+      this.selectionMode.set(true);
+    }
+  }
+
+  toggleSelectionGroup(groupID: string) {
+    if(this.selectionGroups.toggleActiveGroup(groupID)) {
+      this.selectionMode.set(true);
+    }
+  }
+
+  createSelectionGroup() {
+    this.selectionGroups.createGroup();
+    this.selectionMode.set(true);
+    this.selectionShelfCollapsed.set(false);
+  }
+
+  clearSelectionGroup(group: SelectionGroup) {
+    this.selectionGroups.clearGroup(group.id);
+    this.selectionMode.set(true);
+  }
+
+  async editSelectionGroup(group: SelectionGroup) {
+    const dialogResult = await firstValueFrom(SelectionGroupDialogComponent.open(this.dialog, {
+      name: group.name,
+      color: group.color,
+      downloadDirectory: group.downloadDirectory
+    }).afterClosed());
+    if(dialogResult) {
+      this.selectionGroups.updateGroup(group.id, dialogResult);
+    }
+  }
+
+  async deleteSelectionGroup(group: SelectionGroup) {
+    if(this.selectionGroups.isGenericGroup(group.id)) {
+      return;
+    }
+    if(group.fileIDs.size > 0 && !await ConfirmDialogComponent.confirmPromise(this.dialog, {
+      title: `Delete ${group.name}?`,
+      description: `This removes the group and its ${group.fileIDs.size} selected file${group.fileIDs.size === 1 ? '' : 's'}. It does not delete any files.`,
+      confirmText: 'Delete group'
+    })) {
+      return;
+    }
+    this.selectionGroups.deleteGroup(group.id);
+    this.selectionMode.set(true);
+  }
+
+  selectionGroupTooltip(group: SelectionGroup) {
+    if(this.selectionGroups.isGenericGroup(group.id)) {
+      return this.selectionGroups.groupModeActive()
+        ? 'Turn named selection groups off and use General selection'
+        : 'Named selection groups are off';
+    }
+    return this.selectionGroups.activeGroupIDs().has(group.id)
+      ? `Stop applying new selections to ${group.name}`
+      : `Also apply new selections to ${group.name}`;
   }
 
   // shiftSelect(id: number) {
@@ -149,6 +250,46 @@ export class ImageListLoaderComponent implements OnInit, OnChanges {
       });
     } catch (error) {
       this.errorService.handleHydrusError(error);
+    }
+  }
+
+  async downloadSelected() {
+    try {
+      const selectedIDs = Array.from(this.selected());
+      const activeGroups = this.selectionGroups.activeGroups().filter(group => group.fileIDs.size > 0);
+      const usesGroupDirectories = activeGroups.length > 1
+        || activeGroups.some(group => group.downloadDirectory.length > 0);
+      const needsDirectoryPicker = selectedIDs.length > 1 || usesGroupDirectories;
+      const directory = needsDirectoryPicker
+        ? await this.downloadService.chooseDownloadDirectory()
+        : undefined;
+      if (directory === null) {
+        return;
+      }
+
+      const files = await firstValueFrom(this.filesService.getFileMetadata(selectedIDs));
+      if(!directory || !usesGroupDirectories) {
+        await this.downloadService.saveFiles(files, directory, !needsDirectoryPicker);
+        return;
+      }
+
+      const filesByID = new Map(files.map(file => [file.file_id, file]));
+      const fileIDsByDirectory = new Map<string, Set<number>>();
+      activeGroups.forEach(group => {
+        const directoryFileIDs = fileIDsByDirectory.get(group.downloadDirectory) ?? new Set<number>();
+        group.fileIDs.forEach(fileID => directoryFileIDs.add(fileID));
+        fileIDsByDirectory.set(group.downloadDirectory, directoryFileIDs);
+      });
+
+      for(const [relativeDirectory, fileIDs] of fileIDsByDirectory) {
+        const targetDirectory = await this.downloadService.resolveDownloadDirectory(directory, relativeDirectory);
+        const batch = Array.from(fileIDs)
+          .map(fileID => filesByID.get(fileID))
+          .filter((file): file is HydrusBasicFile => Boolean(file));
+        await this.downloadService.saveFiles(batch, targetDirectory);
+      }
+    } catch (error) {
+      this.errorService.handleHydrusError(error, 'Error downloading selected files');
     }
   }
 

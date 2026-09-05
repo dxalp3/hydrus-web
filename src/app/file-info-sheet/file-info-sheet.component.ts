@@ -72,7 +72,7 @@ class FileInfoSheetService {
 export class FileInfoSheetComponent {
 
   constructor(
-    @Inject(MAT_BOTTOM_SHEET_DATA) public data: {file: HydrusBasicFile},
+    @Inject(MAT_BOTTOM_SHEET_DATA) public data: {file: HydrusBasicFile, editTags?: boolean},
     private dialogRef: MatBottomSheetRef<FileInfoSheetComponent>,
     private filesService: HydrusFilesService,
     private tagsService: HydrusTagsService,
@@ -89,6 +89,9 @@ export class FileInfoSheetComponent {
     private exifReader: ExifReaderService,
     private errorService: ErrorService
   ) {
+    if(data.editTags) {
+      this.fileInfoSheetService.showStorageTags = true;
+    }
    }
 
   LocalTagService = HydrusServiceType.LOCAL_TAG;
@@ -107,10 +110,11 @@ export class FileInfoSheetComponent {
 
   canGetSiblingsParents$ = this.tagsService.canGetSiblingsParents$;
 
-  static open(bottomSheet: MatBottomSheet, file: HydrusBasicFile) {
+  static open(bottomSheet: MatBottomSheet, file: HydrusBasicFile, options: {editTags?: boolean} = {}) {
     return bottomSheet.open(FileInfoSheetComponent, {
       data: {
-        file
+        file,
+        ...options
       },
       closeOnNavigation: true,
       panelClass: 'file-info-panel'
@@ -309,6 +313,56 @@ export class FileInfoSheetComponent {
     if (dialogResult) {
       const tags = dialogResult.flat() as string[];
       return this.addTags(tags, serviceKey);
+    }
+  }
+
+  async editTag(event: MouseEvent, tag: string, service: TagServiceItem) {
+    event.preventDefault();
+    event.stopPropagation();
+    if(
+      !this.fileInfoSheetService.showStorageTags
+      || service.serviceType !== this.LocalTagService
+      || !service.serviceKey
+    ) {
+      return;
+    }
+
+    const dialog = TagInputDialogComponent.open(this.dialog, {
+      title: `Edit tag in ${service.serviceName}`,
+      submitButtonText: 'Save',
+      singleTagEdit: tag
+    });
+    const dialogResult = await firstValueFrom(dialog.afterClosed());
+    const firstResult = dialogResult?.[0];
+    const replacement = typeof firstResult === 'string' ? firstResult.trim() : undefined;
+    if(!replacement || replacement === tag) {
+      return;
+    }
+
+    try {
+      await firstValueFrom(this.tagsService.replaceTagOnLocalService(
+        this.data.file.hash,
+        tag,
+        replacement,
+        service.serviceKey
+      ));
+      this.reload();
+      const snackbarRef = this.snackbar.open('Tag updated', 'Undo', {duration: 5000});
+      snackbarRef.onAction().subscribe(async () => {
+        try {
+          await firstValueFrom(this.tagsService.replaceTagOnLocalService(
+            this.data.file.hash,
+            replacement,
+            tag,
+            service.serviceKey
+          ));
+          this.reload();
+        } catch (error) {
+          this.errorService.handleHydrusError(error);
+        }
+      });
+    } catch (error) {
+      this.errorService.handleHydrusError(error, 'Error editing tag');
     }
   }
 

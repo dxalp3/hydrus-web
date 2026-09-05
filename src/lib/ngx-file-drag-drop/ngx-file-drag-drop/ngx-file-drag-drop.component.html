@@ -1,10 +1,26 @@
-<mat-chip-listbox *ngIf="files.length" selectable="false">
-    <mat-chip matTooltip={{file.size|byte}} matTooltipPosition="below" [matTooltipDisabled]="displayFileSize" selected highlighted
-        *ngFor="let file of files" [disabled]="disabled" color="accent" disableRipple="true" [removable]="!disabled"
+<div *ngIf="isFileListCollapsible" class="file-list-summary">
+    <span>{{files.length}} files selected</span>
+    <div class="file-list-actions">
+        <button type="button" (click)="toggleFileList($event)" [attr.aria-expanded]="fileListExpanded">
+            <mat-icon>{{fileListExpanded ? 'expand_less' : 'expand_more'}}</mat-icon>
+            {{fileListExpanded ? 'Collapse' : 'Review files'}}
+        </button>
+        <button *ngIf="!disabled" type="button" (click)="clearFileList($event)">
+            <mat-icon>clear_all</mat-icon>
+            Clear
+        </button>
+    </div>
+</div>
+<mat-chip-listbox *ngIf="visibleFiles.length" selectable="false">
+    <mat-chip [matTooltip]="getFileTooltip(file)" matTooltipPosition="below" selected highlighted
+        *ngFor="let file of visibleFiles" [disabled]="disabled" color="accent" disableRipple="true" [removable]="!disabled"
         (removed)="removeFile(file)">
         <span class="filename">{{getFileName(file)}}</span>
         <mat-icon *ngIf="!disabled" matChipRemove>cancel</mat-icon>
     </mat-chip>
 </mat-chip-listbox>
+<div *ngIf="isFileListCollapsible && fileListExpanded && hiddenFileCount > 0" class="file-list-limit-note">
+    Showing the first {{visibleFiles.length}} files. {{hiddenFileCount}} more remain queued.
+</div>
 <span class="placeholder" *ngIf="!files.length">{{emptyPlaceholder}}</span>
 <input #fileInputEl class="hidden" #fileInput type="file" [attr.multiple]="multiple? '' : null" [attr.accept]="accept">

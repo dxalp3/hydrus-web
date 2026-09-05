@@ -11,6 +11,7 @@
 
 .sidenav-container {
   height: 100%;
+  height: 100dvh;
 }
 
 .mat-sidenav-content {
@@ -33,6 +34,14 @@
   flex-direction: row;
   box-sizing: border-box;
   display: flex;
+  min-height: calc(64px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+
+  @media (max-width: 599px) {
+    min-height: calc(56px + env(safe-area-inset-top, 0px));
+  }
 }
 
 .sidenav-icon {

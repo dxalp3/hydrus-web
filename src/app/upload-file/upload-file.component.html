@@ -4,16 +4,81 @@
   <form [formGroup]="uploadForm" (ngSubmit)="onSubmit()" class="flex-column">
 
 
-      <ngx-file-drag-drop class="file-drag-drop" #fileInput formControlName="fileInput" [multiple]="true"></ngx-file-drag-drop>
+      <ngx-file-drag-drop
+        class="file-drag-drop"
+        #fileInput
+        formControlName="fileInput"
+        [multiple]="true"
+        [displayFileSize]="true"
+        [collapseThreshold]="24"
+        [expandedFileLimit]="50"
+        [maxFileNameLength]="68"
+        emptyPlaceholder="Drop files here or click to choose files"
+      ></ngx-file-drag-drop>
       <!-- <mat-icon matSuffix *ngIf="fileInput.empty">folder</mat-icon>
       <button mat-icon-button matSuffix *ngIf="!fileInput.empty" (click)="fileInput.clear($event)">
         <mat-icon>clear</mat-icon>
       </button> -->
 
-    <mat-checkbox formControlName="addFilenameTag">Add filename tag (new files only)</mat-checkbox>
+    <div class="upload-source-actions">
+      <input
+        #folderInput
+        class="folder-input"
+        type="file"
+        multiple
+        webkitdirectory
+        directory
+        (change)="addFolder($event)"
+      >
+      <button mat-stroked-button type="button" (click)="folderInput.click()" [disabled]="uploading$ | push">
+        <mat-icon>create_new_folder</mat-icon>
+        Add folder
+      </button>
+      @if(queuedFileCount > 0) {
+        <span>{{queuedFileCount}} file{{queuedFileCount === 1 ? '' : 's'}} queued</span>
+      }
+    </div>
+
+    <p class="folder-hint">Folder selection includes files from all subfolders. Empty folders are skipped.</p>
+
+    <section class="tagging-options" aria-labelledby="upload-tagging-heading">
+      <h3 id="upload-tagging-heading" class="mat-headline-6">Tags</h3>
+      <app-tag-input
+        formControlName="tags"
+        placeholder="Tags to add to every uploaded file"
+        displayType="storage"
+        [enableOrSearch]="false"
+        [enableSystemPredicates]="false"
+        [enableFavorites]="false"
+        [enableSiblingParentsDialog]="false"
+        [multiSelectAutocomplete]="true"
+        [autocompleteMinLength]="2"
+      ></app-tag-input>
+      <p class="tagging-hint">Type two or more characters to search all known tags. The selected service is only the upload destination.</p>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tag service</mat-label>
+        <mat-select formControlName="tagServiceKey">
+          <mat-option value="">None</mat-option>
+          @for(service of (tagServices$ | async) ?? []; track service.service_key) {
+            <mat-option [value]="service.service_key">{{service.name}}</mat-option>
+          }
+        </mat-select>
+        <mat-hint>Selected tags are also applied when Hydrus already knows the file.</mat-hint>
+      </mat-form-field>
+
+      @if(uploadForm.hasError('uploadTagServiceRequired') && uploadForm.touched) {
+        <p class="form-error">Choose a tag service before uploading tagged files.</p>
+      }
+
+      <mat-checkbox formControlName="addFilenameTag">Add filename tag (new files only)</mat-checkbox>
+    </section>
 
     <div class="button-row">
-      <button mat-flat-button class="send-button" color="primary" type="submit" [disabled]="uploadForm.invalid || uploading$ | push">Upload</button>
+      <button mat-flat-button class="send-button" color="primary" type="submit" [disabled]="uploadForm.invalid || uploading$ | push">
+        <mat-icon>cloud_upload</mat-icon>
+        Upload {{queuedFileCount || ''}}
+      </button>
     </div>
   </form>
 

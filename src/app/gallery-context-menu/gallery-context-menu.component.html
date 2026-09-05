@@ -1,0 +1,38 @@
+@if (contextMenu.state$ | async; as state) {
+  <div
+    class="gallery-context-menu mat-mdc-menu-panel mat-elevation-z8"
+    role="menu"
+    aria-label="File actions"
+    [style.left.px]="left(state)"
+    [style.top.px]="top(state)"
+    (contextmenu)="preventNativeContextMenu($event)"
+  >
+    <div class="mat-mdc-menu-content">
+      @if (state.selection; as selection) {
+        <button mat-menu-item (click)="toggleSelection(state)">
+          <mat-icon>{{selection.isSelected() ? 'check_box' : 'check_box_outline_blank'}}</mat-icon>
+          <span>{{selection.isSelected() ? 'Deselect' : 'Select'}}</span>
+        </button>
+        @if (selection.selectedCount() > 0) {
+          <button mat-menu-item (click)="openSelectionActions(state)">
+            <mat-icon>playlist_add_check</mat-icon>
+            <span>Selection Options ({{selection.selectedCount()}})</span>
+          </button>
+        }
+        <mat-divider></mat-divider>
+      }
+      <button mat-menu-item (click)="openFileInfo(state)">
+        <mat-icon>info_outlined</mat-icon>
+        <span>File Info</span>
+      </button>
+      <button mat-menu-item (click)="openFileInfo(state, true)">
+        <mat-icon>sell</mat-icon>
+        <span>Manage Tags</span>
+      </button>
+      <mat-divider></mat-divider>
+      <div (click)="close()">
+        <app-file-context-menu-actions [file]="state.file"></app-file-context-menu-actions>
+      </div>
+    </div>
+  </div>
+}

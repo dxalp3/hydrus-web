@@ -1,0 +1,76 @@
+<h1 mat-dialog-title>Create Hydrus page</h1>
+
+<form [formGroup]="pageForm" (ngSubmit)="submit()" autocomplete="off">
+  <div mat-dialog-content class="dialog-content">
+    <mat-form-field appearance="outline">
+      <mat-label>Page type</mat-label>
+      <mat-select formControlName="pageType">
+        @for (option of pageTypeOptions; track option.type) {
+          <mat-option [value]="option.type">{{option.label}}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>{{selectedPageType.description}}</mat-hint>
+    </mat-form-field>
+
+    @if (pageForm.controls.pageType.value === HydrusPageType.ImportGallery) {
+      <div class="gallery-notice">
+        <mat-icon>info</mat-icon>
+        <span>The Client API can create this gallery page, but cannot select a GUG or submit its tag query. Configure and start the query in the desktop client.</span>
+      </div>
+    }
+
+    <mat-form-field appearance="outline">
+      <mat-label>Page name (optional)</mat-label>
+      <input matInput formControlName="pageName" maxlength="128">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Parent page group</mat-label>
+      <mat-select formControlName="pageOfPagesKey">
+        <mat-option value="">Top level</mat-option>
+        @for (group of pageGroups; track group.pageKey) {
+          <mat-option [value]="group.pageKey">{{group.label}}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @switch (pageForm.controls.pageType.value) {
+      @case (HydrusPageType.FileSearch) {
+        <mat-form-field appearance="outline">
+          <mat-label>Initial search tags</mat-label>
+          <textarea matInput formControlName="tags" rows="5" placeholder="One tag or system predicate per line"></textarea>
+          <mat-hint>These search your existing Hydrus files; they are not a gallery downloader query.</mat-hint>
+        </mat-form-field>
+      }
+      @case (HydrusPageType.ImportURLs) {
+        <mat-form-field appearance="outline">
+          <mat-label>Initial URLs</mat-label>
+          <textarea matInput formControlName="urls" rows="5" placeholder="One URL per line"></textarea>
+        </mat-form-field>
+      }
+      @case (HydrusPageType.ImportWatcher) {
+        <mat-form-field appearance="outline">
+          <mat-label>Initial thread URL (optional)</mat-label>
+          <input matInput formControlName="watcherUrl" type="url" placeholder="https://…">
+          @if (pageForm.controls.watcherUrl.hasError('pattern')) {
+            <mat-error>Enter a full http:// or https:// URL.</mat-error>
+          }
+        </mat-form-field>
+      }
+      @case (HydrusPageType.ImportHDD) {
+        <mat-form-field appearance="outline">
+          <mat-label>Paths on the Hydrus machine</mat-label>
+          <textarea matInput formControlName="paths" rows="5" placeholder="One local path per line"></textarea>
+        </mat-form-field>
+        <mat-checkbox formControlName="deleteAfterSuccess">Delete source files after successful import</mat-checkbox>
+      }
+    }
+
+    <mat-checkbox formControlName="focusPage">Show the new page in the desktop client</mat-checkbox>
+  </div>
+
+  <div mat-dialog-actions align="end">
+    <button mat-button type="button" [mat-dialog-close]="null">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="pageForm.invalid">Create page</button>
+  </div>
+</form>

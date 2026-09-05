@@ -1,3 +1,72 @@
 .pages-tab-label-text {
+  display: block;
+  min-width: 0;
+  max-width: 156px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   letter-spacing: 0.006rem;
+}
+
+.mat-tab-label-content {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+:host ::ng-deep .pages-tab-group .mat-mdc-tab {
+  flex: 0 1 auto;
+  min-width: 72px;
+  max-width: 180px;
+}
+
+:host ::ng-deep .pages-tab-group .mdc-tab__content,
+:host ::ng-deep .pages-tab-group .mdc-tab__text-label {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.pages-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.pages-header h2 {
+  margin: 0;
+}
+
+.pages-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.pages-header__actions button[mat-flat-button] {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 600px) {
+  :host ::ng-deep .pages-tab-group .mat-mdc-tab {
+    min-width: 64px;
+    max-width: 140px;
+  }
+
+  .pages-tab-label-text {
+    max-width: 116px;
+  }
+
+  .pages-header {
+    align-items: flex-start;
+  }
+
+  .pages-header h2 {
+    font-size: 22px;
+  }
 }

@@ -4,6 +4,7 @@
   matBadgePosition="before"
   [matBadgeHidden]="!selected()"
   [ngClass]="{'selected' : selected()}"
+  [style.--selection-color]="selectionColor()"
 >
   <div
     class="mdc-image-list__image image-list-image"
@@ -11,4 +12,19 @@
     [ngClass]="'file-id-' + file().file_id"
   >
   </div>
+  @if(selectionMemberships().length > 0) {
+    <div class="selection-memberships" aria-label="Selection group memberships">
+      @for(group of selectionMemberships(); track group.id) {
+        <span
+          class="selection-membership"
+          [style.--membership-color]="group.color"
+          [attr.title]="'Selected in ' + group.name"
+          [attr.aria-label]="'Selected in ' + group.name"
+        >
+          <span class="selection-membership__swatch"></span>
+          <span class="selection-membership__name">{{group.name}}</span>
+        </span>
+      }
+    </div>
+  }
 </div>

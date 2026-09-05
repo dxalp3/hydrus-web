@@ -8,17 +8,36 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { FileInfoSheetComponent } from './file-info-sheet/file-info-sheet.component';
 import { Location } from '@angular/common';
 import { HydrusFileDownloadService } from './hydrus-file-download.service';
-import { take } from 'rxjs';
+import { Observable, take } from 'rxjs';
 import { canOpenInPhotopea, getPhotopeaUrlForFile } from './photopea';
 import { SettingsService } from './settings.service';
 import { MatButton } from '@angular/material/button';
 import { ThemeService } from './theme/theme.service';
 import { HydrusViewsService } from './hydrus-views.service';
+import { GalleryContextMenuService } from './gallery-context-menu/gallery-context-menu.service';
 
 
 function isContentType(content: Content | Slide, type: string) {
   return (content && content.data && content.data.type === type);
 }
+
+export interface GallerySelectionController {
+  isSelected: (fileID: number) => boolean;
+  toggle: (file: HydrusBasicFile) => void;
+  selectedCount: () => number;
+  openActions: () => void;
+  activeColor?: () => string;
+  activeGroupName?: () => string;
+  memberships?: (fileID: number) => Array<{id: string; name: string; color: string}>;
+  changes?: Observable<unknown>;
+}
+
+export const GALLERY_SLIDER_OPTIONS = {
+  arrowPrev: true,
+  arrowNext: true,
+  arrowPrevTitle: 'Previous file',
+  arrowNextTitle: 'Next file'
+} satisfies Pick<PhotoSwipeOptions, 'arrowPrev' | 'arrowNext' | 'arrowPrevTitle' | 'arrowNextTitle'>;
 
 @Injectable({
   providedIn: 'root'
@@ -34,14 +53,16 @@ export class PhotoswipeService {
     private appRef: ApplicationRef,
     private injector: EnvironmentInjector,
     private themeService: ThemeService,
-    private viewsService: HydrusViewsService
+    private viewsService: HydrusViewsService,
+    private galleryContextMenu: GalleryContextMenuService
   ) { }
 
   private processedFiles = new Map<string, SlideData>();
 
-  openPhotoSwipe(items: HydrusBasicFile[], id: number) {
+  openPhotoSwipe(items: HydrusBasicFile[], id: number, selection?: GallerySelectionController) {
     let viewStartTimestamp = Date.now();
     let lastFile: HydrusBasicFile | undefined;
+    let activeFileHash: string | undefined;
 
     const handleView = (file?: HydrusBasicFile) => {
       if(!this.settingsService.appSettings.sendViews) {
@@ -64,8 +85,7 @@ export class PhotoswipeService {
       bgOpacity: 1,
       clickToCloseNonZoomable: false,
       showHideAnimationType: 'none',
-      arrowPrev: false,
-      arrowNext: false,
+      ...GALLERY_SLIDER_OPTIONS,
       zoom: false,
       close: false,
       //secondaryZoomLevel: 1,
@@ -76,6 +96,81 @@ export class PhotoswipeService {
     }
 
     const pswp = new PhotoSwipe(options);
+
+    let selectionButton: HTMLElement | undefined;
+    let selectionActionsButton: HTMLElement | undefined;
+    let selectionStatus: HTMLElement | undefined;
+    let groupSelectionStatus: HTMLElement | undefined;
+
+    const currentFile = () => pswp.currSlide?.data.file as HydrusBasicFile | undefined;
+
+    const updateSelectionUI = (activeFile = currentFile()) => {
+      const file = activeFile;
+      const currentSelected = !!(file && selection?.isSelected(file.file_id));
+      const selectedCount = selection?.selectedCount() ?? 0;
+      const groupColor = selection?.activeColor?.() ?? '#3f51b5';
+      const groupName = selection?.activeGroupName?.() ?? 'selection';
+      const groupMemberships = file ? selection?.memberships?.(file.file_id) ?? [] : [];
+
+      if(selectionButton) {
+        selectionButton.style.setProperty('--selection-group-color', groupColor);
+        const icon = selectionButton.querySelector<HTMLElement>('.material-icons');
+        if(icon) {
+          icon.innerText = currentSelected ? 'check_box' : 'check_box_outline_blank';
+        }
+        const label = currentSelected ? 'Deselect current file' : 'Select current file';
+        selectionButton.title = `${label} (S)`;
+        selectionButton.setAttribute('aria-label', label);
+        selectionButton.setAttribute('aria-pressed', String(currentSelected));
+      }
+
+      if(selectionActionsButton) {
+        selectionActionsButton.style.setProperty('--selection-group-color', groupColor);
+        const count = selectionActionsButton.querySelector<HTMLElement>('.pswp__selection-count');
+        if(count) {
+          count.innerText = String(selectedCount);
+        }
+        selectionActionsButton.hidden = selectedCount === 0;
+        selectionActionsButton.title = `${groupName} options (${selectedCount})`;
+        selectionActionsButton.setAttribute('aria-label', `${groupName} options for ${selectedCount} files`);
+      }
+
+      if(selectionStatus) {
+        selectionStatus.style.setProperty('--selection-group-color', groupColor);
+        selectionStatus.hidden = !currentSelected;
+      }
+
+      if(groupSelectionStatus) {
+        groupSelectionStatus.hidden = groupMemberships.length === 0;
+        groupSelectionStatus.style.top = currentSelected ? '108px' : '68px';
+        const membershipList = groupSelectionStatus.querySelector<HTMLElement>('.pswp__selection-membership-list');
+        if(membershipList) {
+          membershipList.replaceChildren(...groupMemberships.map(group => {
+            const membership = document.createElement('span');
+            membership.className = 'pswp__selection-membership';
+            membership.style.setProperty('--membership-color', group.color);
+            membership.title = `Selected in ${group.name}`;
+
+            const swatch = document.createElement('span');
+            swatch.className = 'pswp__selection-membership-swatch';
+            const name = document.createElement('span');
+            name.textContent = group.name;
+            membership.append(swatch, name);
+            return membership;
+          }));
+        }
+      }
+    };
+
+    const toggleCurrentSelection = () => {
+      const file = currentFile();
+      if(file && selection) {
+        selection.toggle(file);
+        updateSelectionUI();
+      }
+    };
+
+    const selectionSubscription = selection?.changes?.subscribe(() => updateSelectionUI());
 
     pswp.addFilter('numItems', numItems => {
       return items.length;
@@ -142,15 +237,104 @@ export class PhotoswipeService {
         }
       };
 
+      pswp.scrollWrap.oncontextmenu = (event: MouseEvent) => {
+        event.preventDefault();
+        const file = pswp.currSlide?.data.file as HydrusBasicFile | undefined;
+        if(file) {
+          this.galleryContextMenu.open(
+            file,
+            event.clientX,
+            event.clientY,
+            () => pswp.close(),
+            selection ? {
+              isSelected: () => selection.isSelected(file.file_id),
+              toggle: () => {
+                selection.toggle(file);
+                updateSelectionUI();
+              },
+              selectedCount: selection.selectedCount,
+              openActions: selection.openActions
+            } : undefined
+          );
+        }
+      };
+
+    });
+
+    pswp.on('change', () => {
+      this.galleryContextMenu.close();
+      updateSelectionUI();
     });
 
     pswp.on('keydown', (e) => {
       if (this.bottomSheet._openedBottomSheetRef) {
         e.preventDefault();
+        return;
+      }
+      const keyboardEvent = e.originalEvent;
+      if(
+        selection
+        && keyboardEvent.key.toLowerCase() === 's'
+        && !keyboardEvent.ctrlKey
+        && !keyboardEvent.altKey
+        && !keyboardEvent.metaKey
+      ) {
+        e.preventDefault();
+        toggleCurrentSelection();
       }
     });
 
     pswp.on('uiRegister', () => {
+      if(selection) {
+        pswp.ui.registerElement({
+          name: 'select-current',
+          order: 11,
+          isButton: true,
+          tagName: 'button',
+          html: '<span class="mat-icon material-icons">check_box_outline_blank</span>',
+          onInit: el => {
+            selectionButton = el;
+            updateSelectionUI();
+          },
+          onClick: () => toggleCurrentSelection()
+        });
+
+        pswp.ui.registerElement({
+          name: 'selection-actions',
+          order: 12,
+          isButton: true,
+          tagName: 'button',
+          html: '<span class="mat-icon material-icons">playlist_add_check</span><span class="pswp__selection-count">0</span>',
+          onInit: el => {
+            selectionActionsButton = el;
+            updateSelectionUI();
+          },
+          onClick: () => selection.openActions()
+        });
+
+        pswp.ui.registerElement({
+          name: 'selection-status',
+          appendTo: 'root',
+          className: 'pswp__selection-status',
+          html: '<span class="mat-icon material-icons">check_circle</span><span>Selected</span>',
+          onInit: el => {
+            selectionStatus = el;
+            updateSelectionUI();
+          }
+        });
+
+        pswp.ui.registerElement({
+          name: 'group-selection-status',
+          appendTo: 'root',
+          className: 'pswp__group-selection-status',
+          html: '<span class="pswp__group-selection-label">Groups</span><span class="pswp__selection-membership-list"></span>',
+          onInit: el => {
+            groupSelectionStatus = el;
+            updateSelectionUI();
+          }
+        });
+      }
+
       pswp.ui.registerElement({
         name: 'info',
         order: 15,
@@ -301,7 +485,14 @@ export class PhotoswipeService {
     });
 
     pswp.on('contentActivate', ({content}) => {
-      handleView(content.data.file);
+      this.galleryContextMenu.close();
+      const activeFile = content.data.file as HydrusBasicFile;
+      updateSelectionUI(activeFile);
+      if(activeFileHash && activeFileHash !== activeFile.hash && this.bottomSheet._openedBottomSheetRef) {
+        this.bottomSheet.dismiss();
+      }
+      activeFileHash = activeFile.hash;
+      handleView(activeFile);
       if (isContentType(content, 'video') && content.element) {
         const file = content.data.file as HydrusBasicFile;
         const vid = document.createElement('video');
@@ -399,6 +590,8 @@ export class PhotoswipeService {
     });
 
     pswp.on('close', () => {
+      this.galleryContextMenu.close();
+      selectionSubscription?.unsubscribe();
       handleView();
       handleDestroyMedia(pswp.currSlide.content);
       this.themeService.removeBlackThemeColorMetaTag();

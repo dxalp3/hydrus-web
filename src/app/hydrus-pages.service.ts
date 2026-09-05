@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HydrusPageListItem, HydrusPage } from './hydrus-page';
+import { HydrusNewPageRequest, HydrusPageListItem, HydrusPage } from './hydrus-page';
 import { HydrusApiService } from './hydrus-api.service';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -21,6 +21,10 @@ export class HydrusPagesService {
 
   refreshPage(pageKey: string) {
     return this.api.refreshPage(pageKey);
+  }
+
+  createPage(request: HydrusNewPageRequest) {
+    return this.api.createPage(request);
   }
 
 }

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { HydrusApiService } from './hydrus-api.service';
-import { HydrusTagSearchTag, TagDisplayType } from './hydrus-tags';
+import { HydrusTagAction, HydrusTagSearchTag, TagDisplayType } from './hydrus-tags';
 import { HydrusVersionService } from './hydrus-version.service';
 
 @Injectable({
@@ -39,6 +39,18 @@ export class HydrusTagsService {
         }
       }
     )
+  }
+
+  replaceTagOnLocalService(hash: string, oldTag: string, newTag: string, serviceKey: string) {
+    return this.api.addTags({
+      hash,
+      service_keys_to_actions_to_tags: {
+        [serviceKey]: {
+          [HydrusTagAction.Add]: [newTag],
+          [HydrusTagAction.Delete]: [oldTag]
+        }
+      }
+    });
   }
 
   getTagSiblingsAndParentsArray(tag: string, noCache = false) {

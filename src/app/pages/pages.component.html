@@ -1,11 +1,32 @@
-<div>
+<div class="pages-header">
+  <h2 class="mat-headline-5">Hydrus pages</h2>
+  <div class="pages-header__actions">
+    <button mat-flat-button color="primary" [disabled]="creatingPage" (click)="newPage()">
+      @if (creatingPage) {
+        <mat-spinner diameter="18"></mat-spinner>
+      } @else {
+        <mat-icon>add</mat-icon>
+      }
+      <span>New page</span>
+    </button>
+    <button mat-icon-button aria-label="Refresh page list" matTooltip="Refresh page list" [disabled]="loading" (click)="loadPages()">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+</div>
+
+@if(loading) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+<div class="pages-tree">
   <ng-template #recursiveList let-list>
 
     <mat-tab-group animationDuration="0ms" dynamicHeight class="pages-tab-group">
       @for (page of list; track page.page_key) {
         <mat-tab>
           <ng-template mat-tab-label>
-            <div [matTooltip]="page.name" class="mat-tab-label-content">
+            <div [matTooltip]="page.name" matTooltipShowDelay="400" class="mat-tab-label-content">
               <span class="pages-tab-label-text">{{page.name}}</span>
             </div>
           </ng-template>

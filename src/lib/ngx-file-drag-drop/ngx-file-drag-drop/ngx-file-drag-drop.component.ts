@@ -89,6 +89,14 @@ export class NgxFileDragDropComponent implements ControlValueAccessor {
 
   @Input() emptyPlaceholder = `Drop file${this.multiple ? 's' : ''} or click to select`;
 
+  @Input() collapseThreshold = 50;
+
+  @Input() expandedFileLimit = 50;
+
+  @Input() maxFileNameLength = 72;
+
+  fileListExpanded = false;
+
   private _displayFileSize = false;
 
 
@@ -156,7 +164,37 @@ export class NgxFileDragDropComponent implements ControlValueAccessor {
   }
 
   clear() {
+    this.fileListExpanded = false;
     this.writeValue([]);
+  }
+
+  get isFileListCollapsible() {
+    return this.collapseThreshold > 0 && this.files.length > this.collapseThreshold;
+  }
+
+  get visibleFiles() {
+    if(!this.isFileListCollapsible) {
+      return this.files;
+    }
+    return this.fileListExpanded
+      ? this.files.slice(0, Math.max(1, this.expandedFileLimit))
+      : [];
+  }
+
+  get hiddenFileCount() {
+    return Math.max(0, this.files.length - this.visibleFiles.length);
+  }
+
+  toggleFileList(event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.fileListExpanded = !this.fileListExpanded;
+  }
+
+  clearFileList(event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.clear();
   }
 
   @HostListener('change', ['$event'])
@@ -279,9 +317,45 @@ export class NgxFileDragDropComponent implements ControlValueAccessor {
   }
 
   getFileName(file: File): string {
-    if (!this._displayFileSize) { return file.name; }
+    const filename = this.compactFileName(this.getFullFileName(file));
+    if (!this._displayFileSize) { return filename; }
 
     const size = new BytePipe().transform(file.size);
-    return `${file.name} (${size})`;
+    return `${filename} (${size})`;
+  }
+
+  getFileTooltip(file: File) {
+    const size = new BytePipe().transform(file.size);
+    return `${this.getFullFileName(file)} (${size})`;
+  }
+
+  private getFullFileName(file: File) {
+    return file.webkitRelativePath || file.name;
+  }
+
+  private compactFileName(filename: string) {
+    const maxLength = Math.max(16, this.maxFileNameLength);
+    if(filename.length <= maxLength) {
+      return filename;
+    }
+
+    const parts = filename.split(/[\\/]/).filter(Boolean);
+    if(parts.length > 2) {
+      const root = parts[0];
+      const leaf = parts[parts.length - 1];
+      const prefix = `${root}/…/`;
+      return prefix + this.compactText(leaf, maxLength - prefix.length);
+    }
+    return this.compactText(filename, maxLength);
+  }
+
+  private compactText(value: string, maxLength: number) {
+    const safeLength = Math.max(8, maxLength);
+    if(value.length <= safeLength) {
+      return value;
+    }
+    const startLength = Math.floor((safeLength - 1) * .4);
+    const endLength = safeLength - startLength - 1;
+    return `${value.slice(0, startLength)}…${value.slice(-endLength)}`;
   }
 }

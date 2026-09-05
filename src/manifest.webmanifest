@@ -1,9 +1,13 @@
 {
   "name": "Hydrus Web",
   "short_name": "Hydrus",
+  "id": "/",
+  "description": "Browse, manage, upload, and download files from a Hydrus client.",
   "theme_color": "#3949AB",
   "background_color": "#fafafa",
   "display": "standalone",
+  "orientation": "any",
+  "categories": ["photo", "productivity", "utilities"],
   "scope": "/",
   "start_url": "/",
   "icons": [

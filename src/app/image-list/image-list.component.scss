@@ -7,3 +7,7 @@
   user-select: none; /* disable selection/Copy of UIWebView */
   -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
 }
+
+.selection-mode .image-list-link {
+  cursor: cell;
+}

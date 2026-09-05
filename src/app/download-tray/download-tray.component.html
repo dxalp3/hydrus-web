@@ -1,0 +1,64 @@
+@if (jobs$ | async; as jobs) {
+  @if (jobs.length > 0) {
+    <mat-card appearance="outlined" class="download-tray">
+      <button type="button" mat-button class="download-tray-summary" (click)="expanded = !expanded" aria-label="Toggle download tray">
+        <mat-icon>{{activeCount(jobs) > 0 ? 'downloading' : 'download_done'}}</mat-icon>
+        <span>{{summary(jobs)}}</span>
+        <mat-icon>{{expanded ? 'expand_more' : 'expand_less'}}</mat-icon>
+      </button>
+
+      @if (expanded) {
+        <mat-divider></mat-divider>
+        <div class="download-tray-header">
+          <span>Downloads</span>
+          @if (activeCount(jobs) < jobs.length) {
+            <button type="button" mat-icon-button aria-label="Clear finished downloads" title="Clear finished downloads" (click)="downloadService.clearFinishedDownloads()">
+              <mat-icon>delete_sweep</mat-icon>
+            </button>
+          }
+        </div>
+
+        <mat-card-content class="download-list">
+          @for (job of jobs; track job.id) {
+            <div class="download-job">
+              <div class="download-job-heading">
+                <span class="download-job-status">{{statusLabel(job)}}</span>
+                <span class="download-job-count">{{job.completedFiles + job.failedFiles}} / {{job.totalFiles}}</span>
+              </div>
+
+              <mat-progress-bar
+                mode="determinate"
+                [value]="progress(job)"
+              ></mat-progress-bar>
+
+              <div class="download-job-details">
+                <span class="download-job-destination" title="{{job.destination}}">{{job.destination}}</span>
+                @if (job.failedFiles > 0) {
+                  <span class="download-job-failures">{{job.failedFiles}} failed</span>
+                }
+              </div>
+
+              @if (job.currentFile) {
+                <div class="download-current-file" title="{{job.currentFile}}">{{job.currentFile}}</div>
+              }
+
+              <div class="download-job-actions">
+                @if (job.status === 'running') {
+                  <button type="button" mat-button color="warn" (click)="downloadService.cancelDownload(job.id)">
+                    <mat-icon>stop</mat-icon>
+                    <span>Stop</span>
+                  </button>
+                } @else {
+                  <button type="button" mat-button (click)="downloadService.dismissDownload(job.id)">
+                    <mat-icon>close</mat-icon>
+                    <span>Dismiss</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </mat-card-content>
+      }
+    </mat-card>
+  }
+}

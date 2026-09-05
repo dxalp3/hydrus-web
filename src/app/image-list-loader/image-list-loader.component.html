@@ -1,8 +1,17 @@
 <app-image-list
   [files]="currentFiles()"
   (scrollEnd)="listScrollEnd($event)"
-  [(selected)]="selected"
+  [selected]="selected()"
+  (selectedChange)="selectionChanged($event)"
+  [selectionMode]="selectionActive()"
+  [selectionGroups]="selectionGroups.groups()"
+  [activeSelectionGroupID]="selectionGroups.activeGroupID()"
+  [activeSelectionGroupIDs]="selectionGroups.activeGroupIDs()"
+  [activeSelectionColor]="selectionGroups.activeGroup().color"
+  [activeSelectionGroupName]="activeSelectionGroupName()"
+  [showSelectionGroups]="selectionGroups.showGroups()"
   (shiftSelect)="shiftSelect($event)"
+  (selectionActions)="openSelectionMenu(selectionMenuTrigger)"
 ></app-image-list>
 @if (loading()) {
   <div class="loader">
@@ -10,43 +19,184 @@
   </div>
 }
 
-@if(anySelected()) {
+<aside
+  class="selection-shelf"
+  [class.selection-shelf--collapsed]="selectionShelfCollapsed()"
+  [style.--active-group-color]="selectionGroups.activeGroup().color"
+  aria-label="Selection groups"
+>
+  @if(selectionShelfCollapsed()) {
+    <button
+      mat-button
+      class="selection-shelf__collapsed-button"
+      (click)="selectionShelfCollapsed.set(false)"
+      [matTooltip]="'Open selection groups: ' + activeSelectionGroupName()"
+    >
+      <span class="selection-group__swatch"></span>
+      <span class="selection-group__name">{{activeSelectionGroupName()}}</span>
+      <span class="selection-group__count">{{numSelected()}}</span>
+      <mat-icon>expand_less</mat-icon>
+    </button>
+  } @else {
+    <div class="selection-shelf__header">
+      <span>Selection groups · {{selectionGroups.groupModeActive() ? selectionGroups.activeNamedGroups().length + ' active' : 'off'}}</span>
+      <div class="selection-shelf__header-actions">
+        <mat-slide-toggle
+          class="selection-shelf__visibility-toggle"
+          [checked]="selectionGroups.showGroups()"
+          (change)="selectionGroups.setShowGroups($event.checked)"
+          matTooltip="Show every named selection group containing each file"
+        >
+          Show groups
+        </mat-slide-toggle>
+        <button
+          mat-icon-button
+          aria-label="Collapse selection groups"
+          matTooltip="Collapse selection groups"
+          (click)="selectionShelfCollapsed.set(true)"
+        >
+          <mat-icon>expand_more</mat-icon>
+        </button>
+      </div>
+    </div>
+    <div class="selection-shelf__body">
+      <div class="selection-shelf__groups">
+        @for(group of selectionGroups.groups(); track group.id) {
+          <div
+            class="selection-group"
+            [class.selection-group--active]="selectionGroups.activeGroupIDs().has(group.id)"
+            [class.selection-group--primary]="group.id === selectionGroups.activeGroupID()"
+            [class.selection-group--generic]="selectionGroups.isGenericGroup(group.id)"
+            [style.--group-color]="group.color"
+          >
+            <button
+              mat-button
+              class="selection-group__select"
+              [attr.aria-pressed]="selectionGroups.activeGroupIDs().has(group.id)"
+              [matTooltip]="selectionGroupTooltip(group)"
+              (click)="toggleSelectionGroup(group.id)"
+            >
+              @if(selectionGroups.activeGroupIDs().has(group.id)) {
+                <mat-icon class="selection-group__armed-icon">check</mat-icon>
+              }
+              <span class="selection-group__swatch"></span>
+              <span class="selection-group__name">{{group.name}}</span>
+              <span class="selection-group__count">{{group.fileIDs.size}}</span>
+              @if(group.downloadDirectory) {
+                <mat-icon
+                  class="selection-group__folder-icon"
+                  [matTooltip]="'Downloads to ' + group.downloadDirectory"
+                >folder</mat-icon>
+              }
+            </button>
+            <button
+              mat-icon-button
+              class="selection-group__menu"
+              [attr.aria-label]="'Manage ' + group.name"
+              [matMenuTriggerFor]="selectionGroupMenu"
+              [matMenuTriggerData]="{group}"
+            >
+              <mat-icon>more_vert</mat-icon>
+            </button>
+          </div>
+        }
+      </div>
+      <button
+        mat-icon-button
+        class="selection-shelf__add"
+        aria-label="Add selection group"
+        matTooltip="Add selection group"
+        (click)="createSelectionGroup()"
+      >
+        <mat-icon>add</mat-icon>
+      </button>
+      <button
+        mat-icon-button
+        class="selection-shelf__actions"
+        aria-label="Actions for active selection groups"
+        [matMenuTriggerFor]="selectionMenu"
+        [matTooltip]="'Actions for ' + activeSelectionGroupName()"
+      >
+        <mat-icon>playlist_add_check</mat-icon>
+      </button>
+    </div>
+  }
+</aside>
+
+<mat-menu #selectionGroupMenu="matMenu">
+  <ng-template matMenuContent let-group="group">
+    <button mat-menu-item (click)="activateSelectionGroup(group.id)">
+      <mat-icon>{{selectionGroups.isGenericGroup(group.id) ? 'toggle_off' : 'ads_click'}}</mat-icon>
+      <span>{{selectionGroups.isGenericGroup(group.id) ? 'Turn Named Groups Off' : 'Use Only This Group'}}</span>
+    </button>
+    @if(!selectionGroups.isGenericGroup(group.id)) {
+      <button mat-menu-item (click)="editSelectionGroup(group)">
+        <mat-icon>edit</mat-icon>
+        <span>Edit Name / Color / Folder</span>
+      </button>
+    }
+    <button mat-menu-item [disabled]="group.fileIDs.size === 0" (click)="clearSelectionGroup(group)">
+      <mat-icon>deselect</mat-icon>
+      <span>Clear Group</span>
+    </button>
+    @if(!selectionGroups.isGenericGroup(group.id)) {
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="deleteSelectionGroup(group)">
+        <mat-icon>delete_outline</mat-icon>
+        <span>Delete Group</span>
+      </button>
+    }
+  </ng-template>
+</mat-menu>
+
+<div
+  class="select-fab"
+  [matMenuTriggerFor]="selectionMenu"
+  #selectionMenuTrigger="matMenuTrigger"
+>
   <button
-    class="select-fab"
     mat-fab aria-label="Select Options"
-    [matMenuTriggerFor]="selectionMenu"
     [matBadge]="numSelected()"
+    [matBadgeHidden]="!anySelected()"
     matBadgePosition="before"
+    [color]="selectionActive() ? 'accent' : 'primary'"
+    [matTooltip]="selectionActive() ? 'Selection options' : 'Start bulk selection'"
+    (click)="selectionButtonClick($event, selectionMenuTrigger)"
   >
-    <mat-icon>select_all</mat-icon>
+    <mat-icon>{{selectionActive() ? 'select_all' : 'checklist'}}</mat-icon>
   </button>
-}
+</div>
 
 <mat-menu #selectionMenu="matMenu">
-  <button mat-menu-item (click)="archiveSelected()">
-    <mat-icon>archive</mat-icon>
-    <span>Archive Selected</span>
-  </button>
-  <button mat-menu-item (click)="inboxSelected()">
-    <mat-icon>move_to_inbox</mat-icon>
-    <span>Inbox Selected</span>
-  </button>
-  <button mat-menu-item (click)="deleteSelected()">
-    <mat-icon>delete</mat-icon>
-    <span>Delete Selected</span>
-  </button>
-  <button mat-menu-item (click)="undeleteSelected()">
-    <mat-icon>restore_from_trash</mat-icon>
-    <span>Undelete Selected</span>
+  <button mat-menu-item [disabled]="!anySelected()" (click)="downloadSelected()">
+    <mat-icon>download</mat-icon>
+    <span>{{selectionGroups.activeNamedGroups().length > 1 ? 'Download Active Groups to Folders' : (numSelected() > 1 ? 'Download Selected to Folder' : 'Download Selected')}}</span>
   </button>
   <mat-divider></mat-divider>
-  <button mat-menu-item (click)="addTagsToSelected()">
-    <mat-icon>add</mat-icon>
-    <span>Add Tags</span>
+  <button mat-menu-item [disabled]="!anySelected()" (click)="archiveSelected()">
+    <mat-icon>archive</mat-icon>
+    <span>{{selectionGroups.activeNamedGroups().length > 1 ? 'Archive Active Group Files' : 'Archive Selected'}}</span>
   </button>
-  <button mat-menu-item (click)="removeTags()">
+  <button mat-menu-item [disabled]="!anySelected()" (click)="inboxSelected()">
+    <mat-icon>move_to_inbox</mat-icon>
+    <span>{{selectionGroups.activeNamedGroups().length > 1 ? 'Inbox Active Group Files' : 'Inbox Selected'}}</span>
+  </button>
+  <button mat-menu-item [disabled]="!anySelected()" (click)="deleteSelected()">
+    <mat-icon>delete</mat-icon>
+    <span>{{selectionGroups.activeNamedGroups().length > 1 ? 'Delete Active Group Files' : 'Delete Selected'}}</span>
+  </button>
+  <button mat-menu-item [disabled]="!anySelected()" (click)="undeleteSelected()">
+    <mat-icon>restore_from_trash</mat-icon>
+    <span>{{selectionGroups.activeNamedGroups().length > 1 ? 'Undelete Active Group Files' : 'Undelete Selected'}}</span>
+  </button>
+  <mat-divider></mat-divider>
+  <button mat-menu-item [disabled]="!anySelected()" (click)="addTagsToSelected()">
+    <mat-icon>add</mat-icon>
+    <span>{{selectionGroups.activeNamedGroups().length > 1 ? 'Add Tags to Active Groups' : 'Add Tags'}}</span>
+  </button>
+  <button mat-menu-item [disabled]="!anySelected()" (click)="removeTags()">
     <mat-icon>remove</mat-icon>
-    <span>Remove Tags</span>
+    <span>{{selectionGroups.activeNamedGroups().length > 1 ? 'Remove Tags from Active Groups' : 'Remove Tags'}}</span>
   </button>
   <mat-divider></mat-divider>
   <button mat-menu-item (click)="selectAll()">
@@ -55,6 +205,6 @@
   </button>
   <button mat-menu-item (click)="deselectAll()">
     <mat-icon>deselect</mat-icon>
-    <span>Deselect All</span>
+    <span>Clear Selection and Exit</span>
   </button>
 </mat-menu>

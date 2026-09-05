@@ -1,0 +1,15 @@
+.gallery-context-menu {
+  position: fixed;
+  z-index: 1300;
+  width: min(280px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  border-radius: 4px;
+  background: var(--mat-menu-container-color, var(--mat-sys-surface-container, #fff));
+  color: var(--mat-menu-item-label-text-color, var(--mat-sys-on-surface, rgba(0, 0, 0, 0.87)));
+}
+
+.gallery-context-menu button,
+.gallery-context-menu a {
+  width: 100%;
+}

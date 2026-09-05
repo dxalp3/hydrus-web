@@ -1,8 +1,19 @@
 <h1 mat-dialog-title>{{data.title}}</h1>
 <div mat-dialog-content class="dialog-content">
-  <app-tag-input [(ngModel)]="tags" [enableOrSearch]="data.enableOrSearch" [enableSystemPredicates]="data.enableSystemPredicates" [enableFavorites]="data.enableFavorites" [displayType]="data.displayType" placeholder="Tags"></app-tag-input>
+  @if (data.singleTagEdit !== undefined) {
+    <mat-form-field appearance="outline">
+      <mat-label>Tag</mat-label>
+      <input matInput autofocus [(ngModel)]="singleTag" (keydown.enter)="submitSingleTag()">
+    </mat-form-field>
+  } @else {
+    <app-tag-input [(ngModel)]="tags" [enableOrSearch]="data.enableOrSearch" [enableSystemPredicates]="data.enableSystemPredicates" [enableFavorites]="data.enableFavorites" [multiSelectAutocomplete]="data.multiSelectAutocomplete" [enableSelectionGroups]="data.enableSelectionGroups" [displayType]="data.displayType" placeholder="Tags or selection groups"></app-tag-input>
+  }
 </div>
 <div mat-dialog-actions align="end">
   <button mat-button [mat-dialog-close]="null">Cancel</button>
-  <button mat-button [mat-dialog-close]="tags" [disabled]="tags.length < 1">{{data.submitButtonText}}</button>
+  @if (data.singleTagEdit !== undefined) {
+    <button mat-button (click)="submitSingleTag()" [disabled]="!singleTag.trim()">{{data.submitButtonText}}</button>
+  } @else {
+    <button mat-button [mat-dialog-close]="tags" [disabled]="tags.length < 1">{{data.submitButtonText}}</button>
+  }
 </div>

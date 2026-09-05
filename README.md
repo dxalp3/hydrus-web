@@ -14,6 +14,55 @@ Hydrus web is a web client for [Hydrus](https://hydrusnetwork.github.io/hydrus/)
 
 ## Usage
 
+### SideStore IPA
+
+The iOS wrapper bundles Hydrus Web into a native Capacitor app. It does not need the LAN web server: enter the HTTPS Hydrus Client API address you already use over Tailscale directly in the app's API Configuration. On first launch, allow the local-network permission if iPadOS asks for it.
+
+An unsigned SideStore-ready IPA can be built on GitHub without owning a Mac:
+
+1. Push this repository to a GitHub fork or private repository.
+2. Open **Actions → Build unsigned iOS IPA → Run workflow**.
+3. Download the `Hydrus-Web-unsigned-IPA` artifact and unzip it.
+4. Send `Hydrus-Web-unsigned.ipa` to the iPad and open it with SideStore. SideStore will re-sign it with your personal development certificate.
+
+The workflow also runs automatically for pushes to `dev`, `main`, or `master`. The resulting IPA supports iOS and iPadOS 15 or newer and uses the bundle identifier `io.github.hydrusweb.client`, so installing a later build over the existing one preserves the app's local settings and selection groups.
+
+If you have a Mac with Xcode 26 or newer, build the same unsigned IPA locally with:
+
+```bash
+npm run ios:ipa
+```
+
+The output is written to `ios/App/output/Hydrus-Web-unsigned.ipa`. For normal native development, `npm run ios:open` rebuilds the Angular app, syncs it into the iOS project, and opens Xcode.
+
+### iPad, phones, and other devices on your network
+
+Hydrus Web is an installable Progressive Web App (PWA), so the same build works on iPadOS, iOS, Android, Windows, macOS, and Linux. A small production server is included for running this customized copy from any computer that can reach Hydrus. Running it on the Hydrus computer is the simplest setup.
+
+Build and serve it with:
+
+```powershell
+node scripts/serve-mobile.mjs --build
+```
+
+The server prints its LAN addresses. On an iPad connected to the same network, open one of those addresses in Safari. In Hydrus Web's API Configuration, use the same address followed by `/hydrus-api/`; for example:
+
+```text
+Web app:       http://192.168.1.50:8080/
+Hydrus API:    http://192.168.1.50:8080/hydrus-api/
+```
+
+The `/hydrus-api/` route is proxied to `http://127.0.0.1:45869/` by default. This lets Hydrus keep listening only on the host machine instead of exposing its Client API port directly to every device on the LAN. If Hydrus runs on another computer, or uses a different port, set `HYDRUS_API_PROXY` to an address the web-app computer can reach before starting the server:
+
+```powershell
+$env:HYDRUS_API_PROXY = 'http://192.168.1.40:45869/'
+node scripts/serve-mobile.mjs --build
+```
+
+In Safari, choose **Share → Add to Home Screen → Open as Web App**. The plain HTTP LAN address works for normal browser use; service-worker caching and full installed-PWA behavior on another device require trusted HTTPS. If you already have a trusted certificate and key, set `HYDRUS_WEB_TLS_CERT` and `HYDRUS_WEB_TLS_KEY` before launching. A private-network HTTPS proxy such as Caddy or Tailscale HTTPS is another option.
+
+The default port is `8080`. Override it with `HYDRUS_WEB_PORT`. After the first build, `node scripts/serve-mobile.mjs` starts the existing build without rebuilding it.
+
 ### hydrus.app
 
 [hydrus.app](https://hydrus.app/) is the recommended way to use Hydrus Web. It will always be the latest stable version (latest commit on the `master` branch) of Hydrus Web. It is automatically deployed with [Vercel](https://vercel.com/).

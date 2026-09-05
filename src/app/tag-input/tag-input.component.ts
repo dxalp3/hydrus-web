@@ -3,11 +3,11 @@ import { Component, OnInit, Output, EventEmitter, ViewChild, ElementRef, Input, 
 import {COMMA, ENTER} from '@angular/cdk/keycodes';
 import { MatChipInputEvent } from '@angular/material/chips';
 import { ControlValueAccessor, FormControl, NgControl, UntypedFormControl } from '@angular/forms';
-import { distinctUntilChanged, map, startWith, switchMap } from 'rxjs/operators';
-import { MatAutocompleteSelectedEvent, MatAutocomplete, MatOption } from '@angular/material/autocomplete';
+import { catchError, distinctUntilChanged, map, startWith, switchMap } from 'rxjs/operators';
+import { MatAutocompleteSelectedEvent, MatAutocomplete, MatAutocompleteTrigger, MatOption } from '@angular/material/autocomplete';
 import { Observable, combineLatest, firstValueFrom, of } from 'rxjs';
 import { HydrusTagsService } from '../hydrus-tags.service';
-import { HydrusSearchTags, HydrusTagSearchTag, TagDisplayType, isSingleTag } from '../hydrus-tags';
+import { HydrusSearchTag, HydrusSearchTags, HydrusTagSearchTag, TagDisplayType, isSingleTag } from '../hydrus-tags';
 import { MatDialog } from '@angular/material/dialog';
 import { allSystemPredicates, predicateGroups, SystemPredicate, systemTagsForSearch } from '../hydrus-system-predicates';
 import { SystemPredicateDialogComponent } from '../system-predicate-dialog/system-predicate-dialog.component';
@@ -19,6 +19,12 @@ import { formatTagCase, getNamespace, searchTagsContainsSystemPredicate } from '
 import { HydrusRatingsService } from '../hydrus-ratings.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TagSiblingsParentsDialogComponent } from '../tag-siblings-parents-dialog/tag-siblings-parents-dialog.component';
+import {
+  isSelectionGroupSearchTag,
+  parseSelectionGroupSearchTag,
+  selectionGroupSearchTag,
+  SelectionGroupsService
+} from '../selection-groups.service';
 
 function convertPredicate(p: SystemPredicate): ConvertedPredicate {
   const pred = allSystemPredicates[p];
@@ -41,7 +47,11 @@ interface ConvertedPredicateGroup {
 export interface HydrusTagSearchTagUI {
   value: string,
   count?: number,
-  systemPredicate?: SystemPredicate
+  systemPredicate?: SystemPredicate,
+  selectionGroupID?: string,
+  selectionGroupName?: string,
+  selectionGroupColor?: string,
+  selectAllTags?: HydrusTagSearchTagUI[]
 }
 
 @Component({
@@ -72,20 +82,74 @@ export class TagInputComponent implements OnInit, ControlValueAccessor {
 
   @Input() enableSiblingParentsDialog = true;
 
+  @Input() multiSelectAutocomplete = false;
+
+  @Input() autocompleteMinLength = 3;
+
+  @Input() enableSelectionGroups = false;
+
   showSystemPredicateAutocompleteByDefault = input()
 
 
-  tagCtrl = new FormControl('');
+  tagCtrl = new FormControl<string | HydrusTagSearchTagUI>('');
+  private autocompleteSearch = '';
+  private editingTagIndex: number | null = null;
+  autocompleteError = false;
+
   filteredTagsFromAPI$: Observable<HydrusTagSearchTagUI[]> = this.tagCtrl.valueChanges.pipe(
-    switchMap(search => search && search.length >= 3 ? this.tagsService.searchTags(search, this.displayType) : of([]))
+    map(search => this.captureAutocompleteSearch(search)),
+    switchMap(search => {
+      const tagSearch = search.startsWith('-') ? search.substring(1) : search;
+      if(tagSearch.length < this.autocompleteMinLength) {
+        this.autocompleteError = false;
+        return of([]);
+      }
+      this.autocompleteError = false;
+      return this.tagsService.searchTags(tagSearch, this.displayType).pipe(
+        catchError(() => {
+          this.autocompleteError = true;
+          return of([]);
+        })
+      );
+    })
   );
 
   filteredSystemPredicates$: Observable<HydrusTagSearchTagUI[]> = this.tagCtrl.valueChanges.pipe(
+    map(input => this.captureAutocompleteSearch(input)),
     map((input) => input ? systemTagsForSearch.filter(p => p.value.startsWith(input)) : []),
   );
 
-  filteredTags$: Observable<HydrusTagSearchTagUI[]> = combineLatest([this.filteredTagsFromAPI$, this.filteredSystemPredicates$, ]).pipe(
-    map(([api, predicates]) => [...api, ...predicates]),
+  filteredSelectionGroups$: Observable<HydrusTagSearchTagUI[]> = this.tagCtrl.valueChanges.pipe(
+    map(input => this.captureAutocompleteSearch(input)),
+    map(input => {
+      if(!this.enableSelectionGroups) {
+        return [];
+      }
+      const filterValue = (input.startsWith('-') ? input.substring(1) : input).trim().toLowerCase();
+      return this.selectionGroups.groups()
+        .filter(group => group.name.toLowerCase().includes(filterValue))
+        .map(group => ({
+          value: selectionGroupSearchTag(group.id),
+          count: group.fileIDs.size,
+          selectionGroupID: group.id,
+          selectionGroupName: group.name,
+          selectionGroupColor: group.color
+        }));
+    })
+  );
+
+  filteredTagsAndSelectionGroups$: Observable<HydrusTagSearchTagUI[]> = combineLatest([
+    this.filteredTagsFromAPI$,
+    this.filteredSelectionGroups$
+  ]).pipe(
+    map(([api, selectionGroups]) => [...selectionGroups, ...api])
+  );
+
+  filteredTags$: Observable<HydrusTagSearchTagUI[]> = combineLatest([
+    this.filteredTagsAndSelectionGroups$,
+    this.filteredSystemPredicates$
+  ]).pipe(
+    map(([tagsAndSelectionGroups, predicates]) => [...tagsAndSelectionGroups, ...predicates]),
   )
 
   @Output()
@@ -93,6 +157,7 @@ export class TagInputComponent implements OnInit, ControlValueAccessor {
 
   @ViewChild('tagInput') tagInput: ElementRef<HTMLInputElement>;
   @ViewChild('auto') matAutocomplete: MatAutocomplete;
+  @ViewChild(MatAutocompleteTrigger) matAutocompleteTrigger: MatAutocompleteTrigger;
 
   constructor(
     @Optional() @Self() private controlDir: NgControl,
@@ -102,6 +167,7 @@ export class TagInputComponent implements OnInit, ControlValueAccessor {
     public settingsService: SettingsService,
     private ratingsService: HydrusRatingsService,
     private snackbar: MatSnackBar,
+    public selectionGroups: SelectionGroupsService
   ) {
     if (this.controlDir) {
       this.controlDir.valueAccessor = this
@@ -163,7 +229,12 @@ export class TagInputComponent implements OnInit, ControlValueAccessor {
   addSearchTag(tag: string) {
     const value = formatTagCase(tag);
     if ((value || '').trim()) {
-      this.searchTags.push(value);
+      if(this.editingTagIndex === null) {
+        this.searchTags.push(value);
+      } else {
+        this.searchTags.splice(this.editingTagIndex, 1, value);
+        this.editingTagIndex = null;
+      }
     }
 
     this.tags.emit(this.searchTags);
@@ -196,15 +267,131 @@ export class TagInputComponent implements OnInit, ControlValueAccessor {
 
   selected(event: MatAutocompleteSelectedEvent): void {
     const option: MatOption<HydrusTagSearchTagUI> = event.option
-    console.log(option)
-    if(option.value.systemPredicate) {
+    if(!this.autocompleteSearch && typeof this.tagCtrl.value === 'string') {
+      this.autocompleteSearch = this.tagCtrl.value;
+    }
+    if(option.value.selectAllTags) {
+      this.addAllAutocompleteTags(option.value.selectAllTags);
+    } else if(option.value.systemPredicate !== undefined) {
       this.systemPredicateButton(option.value.systemPredicate)
     } else {
-      const negated = this.tagInput.nativeElement.value.startsWith('-');
+      const negated = this.autocompleteSearch.startsWith('-');
       this.addSearchTag((negated ? '-' : '') + option.value.value);
     }
-    this.tagInput.nativeElement.value = '';
+
+    if(this.multiSelectAutocomplete && option.value.systemPredicate === undefined) {
+      const search = this.autocompleteSearch;
+      setTimeout(() => {
+        option.deselect();
+        this.tagCtrl.setValue(search, {emitEvent: false});
+        this.tagInput.nativeElement.value = search;
+        this.tagInput.nativeElement.focus();
+        this.matAutocompleteTrigger.openPanel();
+      });
+    } else {
+      this.autocompleteSearch = '';
+      this.tagInput.nativeElement.value = '';
+      this.tagCtrl.setValue(null);
+    }
+  }
+
+  editSearchTag(event: MouseEvent, index: number, tag: string) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.editingTagIndex = index;
+    this.tagCtrl.setValue(tag);
+    this.tagInput.nativeElement.value = tag;
+    setTimeout(() => {
+      this.tagInput.nativeElement.focus();
+      this.tagInput.nativeElement.select();
+      this.matAutocompleteTrigger.openPanel();
+    });
+  }
+
+  editOrSearchTag(event: MouseEvent, index: number, tags: HydrusSearchTags) {
+    event.preventDefault();
+    event.stopPropagation();
+    const dialogRef = TagInputDialogComponent.open(this.dialog, {
+      displayType: this.displayType,
+      enableOrSearch: false,
+      multiSelectAutocomplete: true,
+      enableSelectionGroups: this.enableSelectionGroups,
+      initialTags: tags,
+      title: 'Edit OR Search',
+      submitButtonText: 'Save'
+    });
+    dialogRef.afterClosed().subscribe(result => {
+      if(result?.length) {
+        this.searchTags.splice(index, 1, result);
+        this.tags.emit(this.searchTags);
+      }
+    });
+  }
+
+  cancelSearchTagEdit(event: Event) {
+    if(this.editingTagIndex === null) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.editingTagIndex = null;
+    this.autocompleteSearch = '';
     this.tagCtrl.setValue(null);
+    this.tagInput.nativeElement.value = '';
+  }
+
+  private captureAutocompleteSearch(search: string | HydrusTagSearchTagUI | null) {
+    if (typeof search === 'string') {
+      this.autocompleteSearch = search;
+    } else if (search === null) {
+      this.autocompleteSearch = '';
+    }
+    return this.autocompleteSearch;
+  }
+
+  isAutocompleteTagSelected(tag: string) {
+    return this.multiSelectAutocomplete && this.searchTags.some(searchTag =>
+      isSingleTag(searchTag) && searchTag.replace(/^-/, '') === tag
+    );
+  }
+
+  isSelectionGroupSearchTag(tag: string) {
+    return isSelectionGroupSearchTag(tag);
+  }
+
+  selectionGroupSearchLabel(tag: string) {
+    const predicate = parseSelectionGroupSearchTag(tag);
+    if(!predicate) {
+      return tag;
+    }
+    const name = this.selectionGroups.groups().find(group => group.id === predicate.groupID)?.name
+      ?? 'Deleted selection group';
+    return predicate.excluded ? `NOT ${name}` : name;
+  }
+
+  selectionGroupSearchColor(tag: string) {
+    const predicate = parseSelectionGroupSearchTag(tag);
+    return this.selectionGroups.groups().find(group => group.id === predicate?.groupID)?.color ?? '#607d8b';
+  }
+
+  searchTagLabel(tag: HydrusSearchTag) {
+    return typeof tag === 'string'
+      ? this.selectionGroupSearchLabel(tag)
+      : tag.map(nestedTag => this.searchTagLabel(nestedTag)).join(' OR ');
+  }
+
+  autocompleteTagsForBulkSelection(tags: HydrusTagSearchTagUI[]) {
+    return tags.filter(tag =>
+      tag.systemPredicate === undefined && !this.isAutocompleteTagSelected(tag.value)
+    );
+  }
+
+  private addAllAutocompleteTags(tags: HydrusTagSearchTagUI[]) {
+    const negated = this.autocompleteSearch.startsWith('-');
+    const prefix = negated ? '-' : '';
+    const additions = this.autocompleteTagsForBulkSelection(tags)
+      .map(tag => prefix + tag.value);
+    this.addSearchTags(additions);
   }
 
 
@@ -230,6 +417,8 @@ export class TagInputComponent implements OnInit, ControlValueAccessor {
     const dialogRef = TagInputDialogComponent.open(this.dialog, {
       displayType: 'display',
       enableOrSearch: false,
+      multiSelectAutocomplete: true,
+      enableSelectionGroups: this.enableSelectionGroups,
       title: 'Add OR Search',
       submitButtonText: 'Add'
     });

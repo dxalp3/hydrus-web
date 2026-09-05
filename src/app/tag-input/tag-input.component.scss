@@ -8,4 +8,18 @@
 
 .tag-chip-text {
   white-space: nowrap;
+  cursor: text;
+}
+
+.selection-group-search-chip {
+  --selection-group-search-color: #607d8b;
+  border: 1px solid var(--selection-group-search-color);
+}
+
+.selection-group-search-icon {
+  color: var(--selection-group-search-color);
+}
+
+.selection-group-search-option {
+  font-weight: 500;
 }

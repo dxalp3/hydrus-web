@@ -15,12 +15,12 @@
         Pages
       </a>
       <a mat-list-item routerLink="/send" routerLinkActive="drawer-list-item-active" (click)="drawer.close()">
-        <mat-icon matListItemIcon>send</mat-icon>
-        Send URL
+        <mat-icon matListItemIcon>download</mat-icon>
+        Downloads
       </a>
       <a mat-list-item routerLink="/upload" routerLinkActive="drawer-list-item-active" (click)="drawer.close()">
         <mat-icon matListItemIcon>upload</mat-icon>
-        Upload File
+        Upload Files
       </a>
       <a mat-list-item routerLink="/settings" routerLinkActive="drawer-list-item-active" (click)="drawer.close()">
         <mat-icon matListItemIcon>settings</mat-icon>
@@ -54,3 +54,5 @@
     </div>
   </mat-sidenav-content>
 </mat-sidenav-container>
+<app-download-tray></app-download-tray>
+<app-gallery-context-menu></app-gallery-context-menu>

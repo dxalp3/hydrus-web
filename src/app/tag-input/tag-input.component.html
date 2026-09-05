@@ -3,28 +3,49 @@
   <mat-chip-grid #chipList [attr.aria-label]="placeholder">
     @for (tag of searchTags; track tag; let i = $index) {
       @if (tag | isSingleTag) {
-        <mat-chip-row
-          color="primary"
-          class="theming tag-chip tag-color"
-          [removable]="true"
-          (removed)="removeSearchTag(i)"
-          [matMenuTriggerFor]="tagMenu"
-          [matMenuTriggerData]="{tag}"
-          [attr.data-tag-namespace]="tag | tagNamespace"
-        >
-          <div class="tag-chip-text">{{tag}}</div>
-          <button matChipRemove>
-            <mat-icon>cancel</mat-icon>
-          </button>
-        </mat-chip-row>
+        @if(isSelectionGroupSearchTag($any(tag))) {
+          <mat-chip-row
+            class="selection-group-search-chip"
+            [style.--selection-group-search-color]="selectionGroupSearchColor($any(tag))"
+            [removable]="true"
+            (removed)="removeSearchTag(i)"
+            title="Selection group search"
+          >
+            <mat-icon class="selection-group-search-icon">collections_bookmark</mat-icon>
+            <div class="tag-chip-text">{{selectionGroupSearchLabel($any(tag))}}</div>
+            <button matChipRemove>
+              <mat-icon>cancel</mat-icon>
+            </button>
+          </mat-chip-row>
+        } @else {
+          <mat-chip-row
+            color="primary"
+            class="theming tag-chip tag-color"
+            [removable]="true"
+            (removed)="removeSearchTag(i)"
+            [matMenuTriggerFor]="tagMenu"
+            #searchTagMenuTrigger="matMenuTrigger"
+            [matMenuTriggerData]="{tag}"
+            [attr.data-tag-namespace]="tag | tagNamespace"
+            title="Double-click to edit tag"
+            (dblclick)="searchTagMenuTrigger.closeMenu(); editSearchTag($event, i, $any(tag))"
+          >
+            <div class="tag-chip-text">{{tag}}</div>
+            <button matChipRemove>
+              <mat-icon>cancel</mat-icon>
+            </button>
+          </mat-chip-row>
+        }
       } @else {
         <mat-chip-row
           color="primary"
           class="theming tag-chip tag-color"
           [removable]="true"
           (removed)="removeSearchTag(i)"
+          title="Double-click to edit OR search"
+          (dblclick)="editOrSearchTag($event, i, $any(tag))"
         >
-          <div class="tag-chip-text">{{$any(tag) | flatten | join:' OR '}}</div>
+          <div class="tag-chip-text">{{searchTagLabel($any(tag))}}</div>
           <button matChipRemove>
             <mat-icon>cancel</mat-icon>
           </button>
@@ -40,25 +61,55 @@
       [formControl]="tagCtrl"
       [matAutocomplete]="auto"
       (blur)="onTouched()"
+      (keydown.escape)="cancelSearchTagEdit($event)"
       enterkeyhint="done"
       autocapitalize="none"
       autocomplete="off"
     >
   </mat-chip-grid>
   <mat-autocomplete #auto="matAutocomplete" (optionSelected)="selected($event)">
-    @if ((enableSystemPredicates ? filteredTags$ : filteredTagsFromAPI$) | async; as tags) {
+    @if (autocompleteError) {
+      <mat-option disabled>Could not load suggestions. Check the API’s Search Files and Add Tags permissions.</mat-option>
+    }
+    @if ((enableSystemPredicates ? filteredTags$ : filteredTagsAndSelectionGroups$) | async; as tags) {
+      @if (multiSelectAutocomplete) {
+        @if (autocompleteTagsForBulkSelection(tags); as unselectedTags) {
+          @if (unselectedTags.length > 1) {
+            <mat-option class="autocomplete-select-all" [value]="{value: '', selectAllTags: tags}">
+              <mat-icon>playlist_add_check</mat-icon>
+              Add all shown ({{unselectedTags.length}})
+            </mat-option>
+          }
+        }
+      }
       @if (tags.length > 100) {
         <cdk-virtual-scroll-viewport
           class="virtual-scroll-viewport-full-width"
           itemSize="48" minBufferPx="256" maxBufferPx="512">
-          <mat-option *cdkVirtualFor="let tag of tags" [value]="tag" [attr.data-tag-namespace]="tag.value | tagNamespace" class="theming tag-color">
-            {{tag.value}} @if(tag.count) { ({{tag.count | number}}) }
+          <mat-option *cdkVirtualFor="let tag of tags" [value]="tag" [disabled]="isAutocompleteTagSelected(tag.value)" [attr.data-tag-namespace]="tag.selectionGroupID ? null : (tag.value | tagNamespace)" class="theming tag-color" [class.selection-group-search-option]="tag.selectionGroupID">
+            @if (multiSelectAutocomplete && isAutocompleteTagSelected(tag.value)) {
+              <mat-icon>check</mat-icon>
+            }
+            @if(tag.selectionGroupID) {
+              <span class="mat-icon material-icons" [style.color]="tag.selectionGroupColor">collections_bookmark</span>
+              {{tag.selectionGroupName}} · Selection group ({{tag.count | number}})
+            } @else {
+              {{tag.value}} @if(tag.count) { ({{tag.count | number}}) }
+            }
           </mat-option>
         </cdk-virtual-scroll-viewport>
       } @else {
         @for (tag of tags; track tag.value) {
-          <mat-option [value]="tag" [attr.data-tag-namespace]="tag.value | tagNamespace" class="theming tag-color">
-            {{tag.value}} @if(tag.count) { ({{tag.count | number}}) }
+          <mat-option [value]="tag" [disabled]="isAutocompleteTagSelected(tag.value)" [attr.data-tag-namespace]="tag.selectionGroupID ? null : (tag.value | tagNamespace)" class="theming tag-color" [class.selection-group-search-option]="tag.selectionGroupID">
+            @if (multiSelectAutocomplete && isAutocompleteTagSelected(tag.value)) {
+              <mat-icon>check</mat-icon>
+            }
+            @if(tag.selectionGroupID) {
+              <span class="mat-icon material-icons" [style.color]="tag.selectionGroupColor">collections_bookmark</span>
+              {{tag.selectionGroupName}} · Selection group ({{tag.count | number}})
+            } @else {
+              {{tag.value}} @if(tag.count) { ({{tag.count | number}}) }
+            }
           </mat-option>
         }
       }

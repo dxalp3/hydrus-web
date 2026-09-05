@@ -1,6 +1,10 @@
 <div>
   <div class="search-bar">
-    <app-tag-input [formControl]="tagsFormControl" class="tag-input" placeholder="Tag Search"></app-tag-input>
+    <app-tag-input [formControl]="tagsFormControl" class="tag-input" placeholder="Tag or Selection Group Search" [enableSelectionGroups]="true"></app-tag-input>
+    <button type="button" mat-flat-button color="primary" class="search-button" (click)="refresh()">
+      <mat-icon>search</mat-icon>
+      <span>Search</span>
+    </button>
   </div>
   @if (searching$ | push) {
     <mat-progress-bar mode="indeterminate" class="search-progress-bar"></mat-progress-bar>
@@ -25,7 +29,10 @@
 <ng-container *rxLet="sort$ as sort">
   <app-toolbar-actions>
     <span class="mat-small toolbar-count">{{searchTotal$ | async}}</span>
-    <button type="button" mat-icon-button aria-label="Refresh" (click)="refresh$.next($event)"><mat-icon>refresh</mat-icon></button>
+    <button type="button" mat-icon-button aria-label="Refresh" (click)="refresh()"><mat-icon>refresh</mat-icon></button>
+    <button type="button" mat-icon-button [matMenuTriggerFor]="historyMenu" aria-label="Search History">
+      <mat-icon>history</mat-icon>
+    </button>
     <button mat-icon-button [matMenuTriggerFor]="sortMenu" aria-label="Sort">
       <mat-icon>sort</mat-icon>
     </button>
@@ -33,6 +40,29 @@
       <mat-icon>more_vert</mat-icon>
     </button>
   </app-toolbar-actions>
+
+  <mat-menu #historyMenu="matMenu">
+    @if (searchHistory$ | async; as history) {
+      @for (entry of history; track $index) {
+        <button type="button" mat-menu-item (click)="restoreSearch(entry)" [attr.title]="searchHistoryLabel(entry)">
+          <mat-icon>search</mat-icon>
+          <span class="search-history-entry">
+            <span class="search-history-label">{{searchHistoryLabel(entry)}}</span>
+            <span class="search-history-time">{{entry.searchedAt | date:'short'}}</span>
+          </span>
+        </button>
+      } @empty {
+        <button type="button" mat-menu-item disabled>No recent searches</button>
+      }
+      @if (history.length > 0) {
+        <mat-divider></mat-divider>
+        <button type="button" mat-menu-item (click)="clearSearchHistory()">
+          <mat-icon>delete_sweep</mat-icon>
+          <span>Clear Search History</span>
+        </button>
+      }
+    }
+  </mat-menu>
 
   <mat-menu #moreMenu="matMenu">
     <ng-template matMenuContent>

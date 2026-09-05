@@ -13,7 +13,7 @@ import { HydrusApiSettingsService } from './hydrus-api-settings.service';
 import { HydrusAddFileResponse } from './hydrus-upload.service';
 import { HydrusIncrementOrSetViewtimeRequest, HydrusKeyVerificationData, HydrusRequestFileDomain, HydrusRequestFiles, HydrusRequestSingleFile } from './hydrus-api';
 import { HydrusJobStatus, HydrusJobStatusAddRequest, HydrusJobStatusUpdateRequest } from './hydrus-job-status';
-import { HydrusPage, HydrusPageListItem } from './hydrus-page';
+import { HydrusNewPageRequest, HydrusNewPageResponse, HydrusPage, HydrusPageListItem } from './hydrus-page';
 import { HydrusClientOptions } from './hydrus-client-options';
 import { HydrusFiletype } from './hydrus-file-mimes';
 
@@ -328,6 +328,17 @@ export class HydrusApiService {
     return this.apiPost<{page_key: string}>('manage_pages/refresh_page', {page_key});
   }
 
+  /**
+   * POST /manage_pages/new_page
+   *
+   * Create a page in the desktop client's current session.
+   * Requires Client API v93 and the Manage Pages permission.
+   */
+  public createPage(data: HydrusNewPageRequest) {
+    return this.apiPost<HydrusNewPageResponse>('manage_pages/new_page', data);
+  }
+
+
 
   /**
    * GET /add_urls/get_url_files
@@ -362,7 +373,7 @@ export class HydrusApiService {
   public addUrl(data: { url: string,
                         destination_page_key?: string,
                         destination_page_name?: string,
-                        show_destination_page?: string,
+                        show_destination_page?: boolean,
                         service_names_to_tags?: HydrusURLServiceNamesToTags}) {
     return this.apiPost<HydrusAddURLResponse>('add_urls/add_url', data);
   }

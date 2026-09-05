@@ -98,6 +98,10 @@ import { MatContextMenuTriggerDirective } from "./mat-context-menu-trigger";
 import { ImageListItemComponent } from './image-list-item/image-list-item.component';
 import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.component';
 import { FileContextMenuActionsComponent } from './file-context-menu-actions/file-context-menu-actions.component';
+import { DownloadTrayComponent } from './download-tray/download-tray.component';
+import { GalleryContextMenuComponent } from './gallery-context-menu/gallery-context-menu.component';
+import { SelectionGroupDialogComponent } from './selection-group-dialog/selection-group-dialog.component';
+import { NewPageDialogComponent } from './new-page-dialog/new-page-dialog.component';
 
 
 const MAT_MODULES = [
@@ -177,6 +181,10 @@ const MAT_MODULES = [
     ImageListItemComponent,
     ConfirmDialogComponent,
     FileContextMenuActionsComponent,
+    DownloadTrayComponent,
+    GalleryContextMenuComponent,
+    SelectionGroupDialogComponent,
+    NewPageDialogComponent,
   ],
   bootstrap: [AppComponent],
   imports: [

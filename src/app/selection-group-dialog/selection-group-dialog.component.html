@@ -1,0 +1,30 @@
+<h2 mat-dialog-title>Edit selection group</h2>
+<mat-dialog-content>
+  <mat-form-field appearance="outline">
+    <mat-label>Name</mat-label>
+    <input matInput [(ngModel)]="name" maxlength="40" (keyup.enter)="save()">
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Download folder prefix</mat-label>
+    <input
+      matInput
+      [(ngModel)]="downloadDirectory"
+      placeholder="project/group-1"
+      (keyup.enter)="save()"
+    >
+    <mat-hint>Created inside the folder you choose when downloading.</mat-hint>
+    @if(!downloadDirectoryValid) {
+      <mat-error>Use a relative path without .. or reserved filename characters.</mat-error>
+    }
+  </mat-form-field>
+
+  <label class="color-field">
+    <span>Group color</span>
+    <input type="color" [(ngModel)]="color" aria-label="Selection group color">
+  </label>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Cancel</button>
+  <button mat-flat-button color="primary" [disabled]="!name.trim() || !downloadDirectoryValid" (click)="save()">Save</button>
+</mat-dialog-actions>

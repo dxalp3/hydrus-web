@@ -1,0 +1,103 @@
+.download-tray {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  z-index: 1000;
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(70vh, 640px);
+  overflow: hidden;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+}
+
+.download-tray-summary {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  text-align: left;
+}
+
+.download-tray-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 0 8px 0 16px;
+  font-weight: 500;
+}
+
+.download-list {
+  max-height: calc(min(70vh, 640px) - 98px);
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.download-job {
+  padding: 12px 0;
+  border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.download-job:first-child {
+  border-top: 0;
+}
+
+.download-job-heading,
+.download-job-details,
+.download-job-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.download-job-heading {
+  margin-bottom: 8px;
+}
+
+.download-job-status {
+  font-weight: 500;
+}
+
+.download-job-count,
+.download-job-details,
+.download-current-file {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.download-job-details {
+  margin-top: 6px;
+}
+
+.download-job-destination,
+.download-current-file {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.download-job-destination {
+  flex: 1;
+}
+
+.download-job-failures {
+  color: var(--mat-sys-error);
+}
+
+.download-current-file {
+  margin-top: 4px;
+}
+
+.download-job-actions {
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+@media (max-width: 599px) {
+  .download-tray {
+    right: max(8px, env(safe-area-inset-right, 0px));
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  }
+}

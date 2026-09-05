@@ -9,12 +9,64 @@
 
 .mat-badge-content.mat-badge-active {
   transform: scale(1.5);
+  background: var(--selection-color);
 }
 
 .mdc-image-list__image-aspect-container {
+  position: relative;
   transition: transform .135s cubic-bezier(0,0,.2,1);
 }
 
 .selected {
   transform: scale(0.85);
+  outline: 4px solid var(--selection-color);
+  outline-offset: -2px;
+}
+
+.selection-memberships {
+  position: absolute;
+  bottom: 7px;
+  left: 7px;
+  display: flex;
+  max-height: calc(100% - 14px);
+  max-width: calc(100% - 14px);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.selection-membership {
+  --membership-color: #3f51b5;
+  display: flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 5px;
+  min-height: 18px;
+  padding: 1px 6px 1px 4px;
+  border: 1px solid color-mix(in srgb, var(--membership-color) 70%, #fff);
+  border-left-width: 4px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, .72);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 14px;
+  text-shadow: 0 1px 1px #000;
+}
+
+.selection-membership__swatch {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--membership-color);
+}
+
+.selection-membership__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

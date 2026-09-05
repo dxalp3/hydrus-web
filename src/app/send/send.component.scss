@@ -1,30 +1,186 @@
-.mat-headline-4 {
+.download-manager {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.download-manager__header {
   margin-bottom: 16px;
+}
+
+.download-manager__header h2 {
+  margin-bottom: 4px;
+}
+
+.download-manager__header p,
+.manager-note {
+  margin: 0;
+  opacity: .72;
+  line-height: 1.45;
+}
+
+.submission-card {
+  margin-bottom: 24px;
+}
+
+.submission-card mat-card-content {
+  padding-top: 20px;
+}
+
+.url-input {
+  width: 100%;
+}
+
+.url-input textarea {
+  resize: vertical;
+}
+
+.submission-options {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.submission-options mat-form-field {
+  width: 100%;
+}
+
+.button-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.send-button mat-spinner {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.download-jobs {
+  margin-bottom: 28px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.section-header h3 {
+  display: inline;
+  margin: 0 10px 0 0;
+}
+
+.section-header span {
+  opacity: .65;
+  font-size: 12px;
+}
+
+.download-job-list {
+  display: grid;
+  gap: 8px;
+}
+
+.download-job mat-card-content {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.download-job--error {
+  border-color: var(--sys-error, #b3261e);
+}
+
+.download-job__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.download-job__status[data-status='accepted'] {
+  color: #2e7d32;
+}
+
+.download-job__status[data-status='error'],
+.download-job__message--error {
+  color: var(--sys-error, #b3261e);
+}
+
+.download-job__body {
+  min-width: 0;
+}
+
+.download-job__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.download-job__title-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.download-job__type {
+  flex: 0 0 auto;
+  opacity: .65;
+  font-size: 12px;
+}
+
+.download-job__url,
+.download-job__message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.download-job__url {
+  margin-top: 2px;
+  opacity: .62;
+}
+
+.download-job__message {
+  margin-top: 4px;
+}
+
+.download-job__actions {
+  display: flex;
+}
+
+.manager-note {
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.url-info-card,
+.saucenao-card {
+  margin-top: 16px;
 }
 
 .url-info-card {
   margin-bottom: 24px;
 }
 
-.send-button {
-  margin-left: 8px;
+.current-url-files {
+  margin-top: 24px;
 }
 
 .thumbnail {
   border-radius: 4px !important;
 }
 
-.metadata-line span:not(:last-of-type) {
-  margin-right: 20px;
-}
-
-.saucenao-card, .url-info-card {
-  margin-top: 16px;
-}
-
 .saucenao-results {
-  margin-top: 16px;
+  margin-top: 24px;
 }
+
 .saucenao-spinner {
   margin: 32px auto 0;
 }
@@ -38,3 +194,35 @@
   margin-bottom: 16px;
 }
 
+@media (max-width: 680px) {
+  .submission-options {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .button-row {
+    flex-wrap: wrap;
+  }
+
+  .send-button {
+    flex: 1 1 100%;
+  }
+
+  .download-job mat-card-content {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .download-job__actions {
+    grid-column: 2;
+    justify-content: flex-end;
+  }
+
+  .download-job__title-row {
+    display: block;
+  }
+
+  .download-job__type {
+    display: block;
+    margin-top: 2px;
+  }
+}

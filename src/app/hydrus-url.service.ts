@@ -6,7 +6,7 @@ import { HydrusURLInfo, HydrusURLFiles, HydrusURLServiceNamesToTags, HydrusAddUR
 export interface AddUrlOptions {
   destination_page_key?: string;
   destination_page_name?: string;
-  show_destination_page?: string;
+  show_destination_page?: boolean;
   service_names_to_tags?: HydrusURLServiceNamesToTags;
 }
 

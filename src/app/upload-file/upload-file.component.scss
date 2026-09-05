@@ -11,6 +11,58 @@
   max-width: none;
 }
 
+.folder-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.upload-source-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  > span {
+    opacity: .72;
+  }
+}
+
+.folder-hint {
+  margin: 6px 0 20px;
+  opacity: .72;
+  font-size: 13px;
+}
+
+.tagging-hint {
+  margin: -14px 16px 16px;
+  opacity: .72;
+  font-size: 12px;
+}
+
+.tagging-options {
+  display: flex;
+  flex-direction: column;
+
+  h3 {
+    margin: 0 0 8px;
+  }
+
+  app-tag-input,
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+.form-error {
+  margin: -10px 16px 10px;
+  color: var(--mat-form-field-error-text-color, #f44336);
+  font-size: 12px;
+}
+
 .upload-status {
   margin-top: 16px;
 }
